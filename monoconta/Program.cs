@@ -16,6 +16,7 @@ namespace monoconta
 			this.Name = name;
 			this.ID = id;
 			Liabilities = new Dictionary<Player, double>();
+			Deposits = new List<Deposit>();
 		}
 
 		public string Name;
@@ -35,39 +36,79 @@ namespace monoconta
 
 		public double LiabilityTowardsBank = 0;
 		public Dictionary<Player, double> Liabilities;
+		public List<Deposit> Deposits;      
 
 		double _money;
 
 		public void PrintCash() {
-			Console.WriteLine("[({0}){1}] Cash: {2}", ID, Name, Money);
+			Console.WriteLine("[({0}){1}] Cash: {2:C}", ID, Name, Money);
 		}
 		public void PrintSituation() {
 			PrintCash();
-			Console.WriteLine("IN: {0}, OUT: {1}", MoneyIn, MoneyOut);
+			Console.WriteLine("IN: {0:C}, OUT: {1:C}", MoneyIn, MoneyOut);
 			Console.WriteLine("Passed start {0} times", PassedStartCounter);
 			Console.WriteLine("Liabilities: ");
-			Console.WriteLine("\t{0} towards bank", LiabilityTowardsBank);
+			Console.WriteLine("\t{0:C} towards bank", LiabilityTowardsBank);
 			foreach (var credit in Liabilities)
 			{
-				Console.WriteLine("\t{0} towards {1}", credit.Value, credit.Key.Name);
+				Console.WriteLine("\t{0:C} towards {1}", credit.Value, credit.Key.Name);
 			}
-			Console.WriteLine("Loans made: ");
 
+			Console.WriteLine("Loans made: ");
 			var book = from player in MainClass.Players
 					   from debt in player.Liabilities
 					   where debt.Key == this
 					   select new { Debtor = player, Debt = debt.Value };
-
 			foreach (var credit in book)
 			{
-				Console.WriteLine("\t{0} to be received from {1}", credit.Debt, credit.Debtor);
+				Console.WriteLine("\t{0:C} to be received from {1}", credit.Debt, credit.Debtor.Name);
 			}
-            Console.WriteLine("-----\n");
+            
+			Console.WriteLine("Deposits: ");
+            foreach (var deposit in this.Deposits)
+			{
+				Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds);
+			}
+
+
+			Console.WriteLine("-----\n");
 		}
 	}
+    
+	class Deposit {
+		public double Principal;
+		public double TotalInterest;
+		public double InterestRate;
+		public int TotalRounds, RoundsPassed;
+        
+        public Deposit(double principal, double rate, int rounds)
+		{
+			this.Principal = principal;
+			this.InterestRate = rate;
+			this.TotalRounds = rounds;
+		}
 
+		public void RecalculateInterestRate() {
+			this.InterestRate = CalculateDepositInterestRate(this.TotalRounds);
+		}
+
+		public static double CalculateDepositInterestRate(int rounds)
+        {
+            double depositBase = 5 * MainClass.InterestRateBase / 18;
+			double playerDepositInterestSpread = (MainClass.InterestRateBase / 3 - depositBase);
+            //const double riskMultiplier = 34 / 117;
+
+            return depositBase + playerDepositInterestSpread * 34 / 117 * (rounds - 1);
+        }
+        
+		public bool PassRound(bool cmd) {
+			this.TotalInterest = (this.Principal + this.TotalInterest) * (this.InterestRate*(cmd?5/3:1)/100 + 1) - this.Principal;
+            return ++RoundsPassed < TotalRounds;
+		}
+	}
+    
 	class MainClass
-	{      
+	{
 		public static List<Player> Players;
 		public static double InterestRateBase=1;
 		public static Player admin;
@@ -81,7 +122,7 @@ namespace monoconta
 				Console.WriteLine("\n\n");
 				foreach (var player in Players)
 				{
-					Console.Write("{0}: {1};\t", player.Name, player.Money);
+					Console.Write("{0}: {1:C};\t", player.Name, player.Money);
 				}
 				Console.Write("\n>>: ");
 				try
@@ -91,7 +132,7 @@ namespace monoconta
 					{
 						var player = ByID(ReadInt("ID: "));
 						double amount = ReadDouble("Sum: ");
-						if (player == admin&& char.IsUpper(command[0]))
+						if (player == admin && char.IsUpper(command[0]))
 							amount *= 1.0875;
 						player.Money += amount;
 						player.PrintCash();
@@ -100,7 +141,7 @@ namespace monoconta
 					{
 						var player = ByID(ReadInt("ID: "));
 						double amount = ReadDouble("Sum: ");
-						if (player == admin&& char.IsUpper(command[0]))
+						if (player == admin && char.IsUpper(command[0]))
 							amount *= 0.925;
 						player.Money -= amount;
 						player.PrintCash();
@@ -120,12 +161,23 @@ namespace monoconta
 						var player = ByID(ReadInt("ID: "));
 						player.PassedStartCounter++;
 						player.Money += 2000 * (command.StartsWith("PASS") ? 2 : 1);
-                        
+
 						player.LiabilityTowardsBank *= ((InterestRateBase / 3) / 100 + 1);
 
 						foreach (var creditor in player.Liabilities.Keys.ToList())
 						{
 							player.Liabilities[creditor] *= ((InterestRateBase / 2) / 100 + 1);
+						}
+						foreach (var deposit in player.Deposits.ToList())
+						{
+							if (!deposit.PassRound(player==admin && char.IsUpper(command[0])))
+							{
+								Console.WriteLine("Deposit reached term");
+								player.Money += deposit.Principal;
+								player.Money += deposit.TotalInterest;
+								Console.WriteLine("Received principal of {0:C} and total accumulated interest of {1:C}", deposit.Principal, deposit.TotalInterest);
+								player.Deposits.Remove(deposit);
+							}
 						}
 					}
 					else if (command.ToLower() == "loan")
@@ -136,7 +188,7 @@ namespace monoconta
 						if (from == 0) // bank
 						{
 							player.LiabilityTowardsBank += amount;
-							if (player == admin&& char.IsUpper(command[0]))
+							if (player == admin && char.IsUpper(command[0]))
 								amount *= 1.1;
 							player.Money += amount;
 						}
@@ -168,13 +220,28 @@ namespace monoconta
 						var player = ByID(ReadInt("For which player? "));
 						if (command == "printcash")
 							player.PrintCash();
-						else 
+						else
 							player.PrintSituation();
 					}
-					else if (command == "rate") {
+					else if (command == "rate")
+					{
 						InterestRateBase = ReadDouble("New rate: ");
+						foreach (var deposit in Players.SelectMany(p=>p.Deposits))
+						{
+							
+						}
 					}
-					else if (command.ToLower() == "repay") 
+					else if (command == "rateinfo")
+					{
+						Console.WriteLine("{0:F3}% - interest rate for interplayer loans", InterestRateBase / 3);
+						Console.WriteLine("{0:F3}% - interest rate for bank loans", InterestRateBase / 2);
+						int infmax = ReadInt("Interest rates on X rounds: X = ");
+						for (int i = 1; i <= infmax; i++)
+						{
+							Console.WriteLine("\t{0:F4}% - interest rate for {1}-round deposit", Deposit.CalculateDepositInterestRate(i), i);
+						}
+					}
+					else if (command.ToLower() == "repay")
 					{
 						var repayer = ByID(ReadInt("Who is paying?"));
 						int destination = ReadInt("Whom?");
@@ -191,25 +258,43 @@ namespace monoconta
 							var userRepaid = ByID(destination);
 							repayer.Liabilities[userRepaid] -= amount;
 							userRepaid.Money += amount;
-							if (repayer == admin&& char.IsUpper(command[0]))
+							if (repayer == admin && char.IsUpper(command[0]))
 								amount *= 0.85;
 							repayer.Money -= amount;
 						}
 
- 					}
-					else if (command.ToLower()=="refinance") {
+					}
+					else if (command.ToLower() == "refinance")
+					{
 						var debtor = ByID(ReadInt("Who has the debt?"));
 						var financier = ByID(ReadInt("Who is offering the new debt?"));
 						double amount = ReadDouble("How much of the debt?");
 						debtor.LiabilityTowardsBank -= amount;
 						if (financier == admin && char.IsUpper(command[0]))
-						    debtor.Liabilities[financier] += amount*1.05;
+							debtor.Liabilities[financier] += amount * 1.05;
 						financier.Money -= amount;
 					}
-					else if (command == "whoisadmin") {
-						if(admin!=null)
+					else if (command == "deposit")
+					{
+						var depositer = ByID(ReadInt("Depositer: "));
+						int rounds = ReadInt("Rounds money is locked: ");
+						double sum = ReadDouble("Sum of money: ");
+						double setInterestRate = Deposit.CalculateDepositInterestRate(rounds);
+						Console.WriteLine("Interest rate calculated at {0:F4}%/round. Sign? yes/no", setInterestRate);
+						if (Console.ReadLine() == "yes")
+						{
+							depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds));
+							depositer.Money -= sum;
+							Console.WriteLine("Done");
+						}
+						else Console.WriteLine("Cancelled.");
+					}
+					else if (command == "whoisadmin")
+					{
+						if (admin != null)
 							Console.WriteLine(admin.Name);
 					}
+
 				}
 				catch (Exception e)
 				{
@@ -218,6 +303,8 @@ namespace monoconta
 			}
 		}
         
+
+
 		public static void LoadGame() {
 			Console.WriteLine("Players' names:");
 			string[] names = Console.ReadLine().Split(',').Select(s => s.Trim()).ToArray();
@@ -232,7 +319,7 @@ namespace monoconta
 				Console.Write(str);
 			if (double.TryParse(Console.ReadLine(), out double s))
 				return s;
-			else return double.NaN;
+			else return 0;
 		}
 		public static int ReadInt(string str = null)
         {
@@ -240,7 +327,7 @@ namespace monoconta
                 Console.Write(str);
 			if (int.TryParse(Console.ReadLine(), out int s))
 				return s;
-			else return int.MinValue;
+			else return 0;
         }
 
 		public static Player ByID(string s) {
