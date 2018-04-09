@@ -72,7 +72,7 @@ namespace monoconta
             foreach (var deposit in this.Deposits)
 			{
 				Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds);
-				chargeOnCapital += deposit.Principal * deposit.InterestRate/100 * (this == MainClass.admin ? 1.6666666666 : 1);
+				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate/100 * (this == MainClass.admin ? 1.6666666666 : 1);
 			}
 
 			Console.WriteLine("Cost of capital: {0:F2}/round", costOfCapital);
@@ -95,6 +95,11 @@ namespace monoconta
 			this.TotalRounds = rounds;
 		}
 
+		public double CurrentCapitalBase 
+		{
+			get { return this.Principal + this.TotalInterest; }
+		}
+
 		public void RecalculateInterestRate() {
 			this.InterestRate = CalculateDepositInterestRate(this.TotalRounds);
 		}
@@ -110,7 +115,7 @@ namespace monoconta
         }
         
 		public bool PassRound(bool cmd) {
-			this.TotalInterest = (this.Principal + this.TotalInterest) * (this.InterestRate*(cmd?((double)(5/3)):1)/100 + 1) - this.Principal;
+			this.TotalInterest = (this.CurrentCapitalBase) * (this.InterestRate*(cmd?((double)(5/3)):1)/100 + 1) - this.Principal;
             return ++RoundsPassed < TotalRounds;
 		}
 	}
