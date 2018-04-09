@@ -45,13 +45,16 @@ namespace monoconta
 		}
 		public void PrintSituation() {
 			PrintCash();
+			double costOfCapital = 0, chargeOnCapital = 0;
 			Console.WriteLine("IN: {0:C}, OUT: {1:C}", MoneyIn, MoneyOut);
 			Console.WriteLine("Passed start {0} times", PassedStartCounter);
 			Console.WriteLine("Liabilities: ");
 			Console.WriteLine("\t{0:C} towards bank", LiabilityTowardsBank);
+			costOfCapital += LiabilityTowardsBank*MainClass.InterestRateBase/100/2;
 			foreach (var credit in Liabilities)
 			{
 				Console.WriteLine("\t{0:C} towards {1}", credit.Value, credit.Key.Name);
+				costOfCapital += credit.Value * MainClass.InterestRateBase/100 / 3;
 			}
 
 			Console.WriteLine("Loans made: ");
@@ -62,14 +65,18 @@ namespace monoconta
 			foreach (var credit in book)
 			{
 				Console.WriteLine("\t{0:C} to be received from {1}", credit.Debt, credit.Debtor.Name);
+				chargeOnCapital += credit.Debt * MainClass.InterestRateBase/100 / 3;
 			}
             
 			Console.WriteLine("Deposits: ");
             foreach (var deposit in this.Deposits)
 			{
 				Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds);
+				chargeOnCapital += deposit.Principal * deposit.InterestRate/100 * (this == MainClass.admin ? 1.6666666666 : 1);
 			}
 
+			Console.WriteLine("Cost of capital: {0:F2}/round", costOfCapital);
+			Console.WriteLine("Charge on capital: {0:F2}/round", chargeOnCapital);
 
 			Console.WriteLine("-----\n");
 		}
@@ -92,17 +99,18 @@ namespace monoconta
 			this.InterestRate = CalculateDepositInterestRate(this.TotalRounds);
 		}
 
-		public static double CalculateDepositInterestRate(int rounds)
+		public static double CalculateDepositInterestRate(int rounds, bool temper = false)
         {
             double depositBase = 5 * MainClass.InterestRateBase / 18;
 			double playerDepositInterestSpread = (MainClass.InterestRateBase / 3 - depositBase);
-            //const double riskMultiplier = 34 / 117;
+			//const double riskMultiplier = 34 / 117;
 
-            return depositBase + playerDepositInterestSpread * 34 / 117 * (rounds - 1);
+			double multi = temper ? (double)(5)/3 : 1;
+			return (depositBase + playerDepositInterestSpread * 34 / 117 * (rounds - 1))*multi;
         }
         
 		public bool PassRound(bool cmd) {
-			this.TotalInterest = (this.Principal + this.TotalInterest) * (this.InterestRate*(cmd?5/3:1)/100 + 1) - this.Principal;
+			this.TotalInterest = (this.Principal + this.TotalInterest) * (this.InterestRate*(cmd?((double)(5/3)):1)/100 + 1) - this.Principal;
             return ++RoundsPassed < TotalRounds;
 		}
 	}
@@ -133,7 +141,7 @@ namespace monoconta
 						var player = ByID(ReadInt("ID: "));
 						double amount = ReadDouble("Sum: ");
 						if (player == admin && char.IsUpper(command[0]))
-							amount *= 1.0875;
+							amount *= 1.1175;
 						player.Money += amount;
 						player.PrintCash();
 					}
@@ -142,17 +150,17 @@ namespace monoconta
 						var player = ByID(ReadInt("ID: "));
 						double amount = ReadDouble("Sum: ");
 						if (player == admin && char.IsUpper(command[0]))
-							amount *= 0.925;
+							amount *= 0.9125;
 						player.Money -= amount;
 						player.PrintCash();
 					}
-					else if (command == "transfer")
+					else if (command.ToLower() == "transfer")
 					{
 						var beneficiary = ByID(ReadInt("ID of person receiving money: "));
 						var payer = ByID(ReadInt("ID of person paying: "));
 						double sum = ReadDouble("Sum: ");
-						beneficiary.Money += sum;
-						payer.Money -= sum;
+						beneficiary.Money += sum * (beneficiary == admin&&char.IsUpper(command[0]) ? 1.125 : 1);
+						payer.Money -= sum * (payer == admin && char.IsUpper(command[0]) ? 0.9 : 1);
 						beneficiary.PrintCash();
 						payer.PrintCash();
 					}
@@ -231,14 +239,14 @@ namespace monoconta
 							
 						}
 					}
-					else if (command == "rateinfo")
+					else if (command.ToLower() =="rateinfo")
 					{
 						Console.WriteLine("{0:F3}% - interest rate for interplayer loans", InterestRateBase / 3);
 						Console.WriteLine("{0:F3}% - interest rate for bank loans", InterestRateBase / 2);
 						int infmax = ReadInt("Interest rates on X rounds: X = ");
 						for (int i = 1; i <= infmax; i++)
 						{
-							Console.WriteLine("\t{0:F4}% - interest rate for {1}-round deposit", Deposit.CalculateDepositInterestRate(i), i);
+							Console.WriteLine("\t{0:F4}% - interest rate for {1}-round deposit", Deposit.CalculateDepositInterestRate(i, char.IsUpper(command[0])), i);
 						}
 					}
 					else if (command.ToLower() == "repay")
@@ -288,6 +296,9 @@ namespace monoconta
 							Console.WriteLine("Done");
 						}
 						else Console.WriteLine("Cancelled.");
+					}
+					else if (command == "bet") {
+						
 					}
 					else if (command == "whoisadmin")
 					{
