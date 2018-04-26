@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 
 namespace BetManager
@@ -7,17 +7,29 @@ namespace BetManager
     {
         public static void Main(string[] args)
         {
-			int[] uids = args.SelectMany(arg => arg.Split(',')).Select(s=>int.Parse(s)).ToArray();
+            args =args.Length !=0 ? args : Console.ReadLine().Split(';');
 
-			var pairs = from arg in args
-						let pair = arg.Split(',')
-						select new { ID = int.Parse(pair[0]), Sum = double.Parse(pair[1]) };
+            var pairs = from arg in args
+                        let ar = arg.Split(',')
+                        select new { id = int.Parse(ar[0]), bet = double.Parse(ar[1])};
 
-			double sum = pairs.Sum(a => a.Sum);
-			var quotas = from pair in pairs
-						 select new { ID = pair.ID, quota = pair.Sum / sum * 100 };
-			
-			int rand = new Random().Next(1, sum);
+            double[] array = new double[pairs.Count()];
+            double c=0;
+            foreach (var pair in pairs)
+            {
+                c+=pair.bet;
+                array[pair.id-1] = c;
+            }
+
+            int rand = new Random().Next(1, (int)c);
+            var winner = pairs.First(p => array[p.id-1] >= rand);
+
+            foreach (var p in pairs)
+            {
+                Console.WriteLine("Chance: {0:F2}%", p.bet*100/c);
+            }
+            Console.WriteLine("\tWinner: {0}", winner.id);
+            Console.ReadLine();
         }
     }
 }
