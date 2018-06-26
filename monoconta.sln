@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "monoconta", "monoconta\monoconta.csproj", "{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetManager", "BetManager\BetManager.csproj", "{029E3590-AE19-438F-9CB6-48639C3845E5}"
+Project("{9344BDBB-3E7F-41FC-A0DD-8665D75EE146}") = "BetManager", "BetManager\BetManager.csproj", "{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,9 +15,9 @@ Global
 		{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}.Debug|x86.Build.0 = Debug|x86
 		{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}.Release|x86.ActiveCfg = Release|x86
 		{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}.Release|x86.Build.0 = Release|x86
-		{029E3590-AE19-438F-9CB6-48639C3845E5}.Debug|x86.ActiveCfg = Debug|x86
-		{029E3590-AE19-438F-9CB6-48639C3845E5}.Debug|x86.Build.0 = Debug|x86
-		{029E3590-AE19-438F-9CB6-48639C3845E5}.Release|x86.ActiveCfg = Release|x86
-		{029E3590-AE19-438F-9CB6-48639C3845E5}.Release|x86.Build.0 = Release|x86
+		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Debug|x86.ActiveCfg = Debug|x86
+		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Debug|x86.Build.0 = Debug|x86
+		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Release|x86.ActiveCfg = Release|x86
+		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 EndGlobal
