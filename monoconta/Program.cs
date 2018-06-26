@@ -75,7 +75,7 @@ namespace monoconta
 			Console.WriteLine("Deposits: ");
             foreach (var deposit in this.Deposits)
 			{
-				Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds);
+				Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}\t[{4}]", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds, deposit.UID);
 				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate/100 * (this == MainClass.admin ? MainClass._m_ : 1);
 				financialAssets += deposit.CurrentCapitalBase;
 			}
@@ -102,17 +102,19 @@ namespace monoconta
 		double prevCapIncome=1;
 	}
     
-	class Deposit {
+	class Deposit {      
 		public double Principal;
 		public double TotalInterest;
 		public double InterestRate;
 		public int TotalRounds, RoundsPassed;
+		public int UID;
         
-        public Deposit(double principal, double rate, int rounds)
+        public Deposit(double principal, double rate, int rounds, int id)
 		{
 			this.Principal = principal;
 			this.InterestRate = rate;
 			this.TotalRounds = rounds;
+			this.UID = id;
 		}
 
 		public double CurrentCapitalBase 
@@ -120,10 +122,10 @@ namespace monoconta
 			get { return this.Principal + this.TotalInterest; }
 		}
 
-		public void RecalculateInterestRate() {
+		public void RecalculateInterestRate()
+		{
 			this.InterestRate = CalculateDepositInterestRate(this.TotalRounds);
 		}
-
 
 		public static double CalculateDepositInterestRate(int rounds, bool temper = false)
         {
@@ -148,6 +150,9 @@ namespace monoconta
 		public static Player admin;
 
 		public static double _m_ = (double)5 / 3;
+		public static double startBonus = 2000;
+
+		public static int depocounter = 0;
 
 		public static void Main(string[] args)
 		{
@@ -195,10 +200,10 @@ namespace monoconta
 					else if (command.ToLower().StartsWith("pass"))
 					{
 						var player = ByID(ReadInt("ID: "));
-						player.PassedStartCounter++;
                         
 						repeat:
-						player.Money += 2000;                  
+						player.PassedStartCounter++;
+						player.Money += startBonus;                  
 						player.LiabilityTowardsBank *= ((InterestRateBase / (player == admin ? 2.25 : 2)) / 100 + 1);
 						foreach (var creditor in player.Liabilities.Keys.ToList())
 						{
@@ -268,6 +273,13 @@ namespace monoconta
 					else if (command == "rate")
 					{
 						InterestRateBase = ReadDouble("New rate: ");
+						foreach (var player in Players)
+						{                     
+							foreach (var deposit in player.Deposits)
+							{
+								deposit.RecalculateInterestRate();
+							}
+						}
 						//foreach (var deposit in Players.SelectMany(p => p.Deposits))
 						//{
 
@@ -329,7 +341,7 @@ namespace monoconta
 						Console.WriteLine("Interest rate calculated at {0:F4}%/round. Sign? yes/no", setInterestRate);
 						if (Console.ReadLine() == "yes")
 						{
-							depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds));
+							depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds, ++depocounter));
 							depositer.Money -= sum;
 							Console.WriteLine("Done");
 						}
@@ -355,6 +367,23 @@ namespace monoconta
                         admin.Money += value * 1.0775;
 						LoanSplit(value, splitsum, rounds);
 					}
+					else if (command=="startbonus") {
+						startBonus = ReadDouble("Value: ");
+					}
+					else if (command=="deletedeposit") {
+						int id = ReadInt("ID: ");
+						var data = from player in Players
+								   from deposit in player.Deposits
+								   where deposit.UID == id
+								   select new { Deposit = deposit, Player = player };
+                        
+						var removed = data.FirstOrDefault();
+						if (removed != null)
+						{
+							removed.Player.Deposits.Remove(removed.Deposit);
+							removed.Player.Money += removed.Deposit.Principal;
+						}
+					}
 				}
 				catch (Exception e)
 				{
@@ -371,10 +400,10 @@ namespace monoconta
 			while (val - generatedSum >= splitsum)
 			{
 				double now = rand.Next((int)(splitsum * 0.9), (int)(splitsum * 1.1));
-				deposits.Add(new Deposit(now, Deposit.CalculateDepositInterestRate(rounds, true), rounds));
+				deposits.Add(new Deposit(now, Deposit.CalculateDepositInterestRate(rounds, true), rounds, ++depocounter));
 				generatedSum += now;
 			}
-			deposits.Add(new Deposit(val - generatedSum, Deposit.CalculateDepositInterestRate(rounds, true), rounds));
+			deposits.Add(new Deposit(val - generatedSum, Deposit.CalculateDepositInterestRate(rounds, true), rounds, ++depocounter));
 			admin.Deposits.AddRange(deposits);
             admin.Money -= val;
 		}
