@@ -34,10 +34,10 @@ namespace monoconta
 		{
 			get
 			{
-				double loansMade = MainClass.Entities.SelectMany(e => e.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
+				double loansMade = MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
 				double deposits = this.Deposits.Sum(deposit => deposit.CurrentCapitalBase);
-				double shares = MainClass.Entities.OfType<Partnership>().Where(ent => ent.ShareholderStructure.ContainsKey(this)).Sum(ent => ent.ShareholderStructure[this] * ent.ShareValue);
-				return loansMade + deposits+shares;
+				double shares = MainClass.Entities.OfType<Company>().Where(entity => entity.ShareholderStructure.ContainsKey(this)).Sum(entity => entity.ShareholderStructure[this] * entity.ShareValue);
+				return loansMade + deposits + shares;
 			}
 		}
 		public double TotalLiabilitiesValue
@@ -49,8 +49,17 @@ namespace monoconta
 		}
 
 		public virtual void PrintStructure() {
+			//...
+		}
+
+		public virtual void OnPassedStart() {
+			this.PassedStartCounter++;         
+		}
+
+		public virtual void RegisterBook() {
 			
 		}
+
 
 		public void PrintCash()
         {
@@ -90,22 +99,34 @@ namespace monoconta
             foreach (var deposit in this.Deposits)
             {
                 Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}\t[{4}]", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds, deposit.UID);
-				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * ((this is Player) && this == MainClass.admin ? MainClass._m_ : 1);
+				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * (((this is Player) && this == MainClass.admin) || ((this is Company) && MainClass.admin.PeggedEntities.Contains(this as Company)) ? MainClass._m_ : 1);
                 financialAssets += deposit.CurrentCapitalBase;
             }
 
 			Console.WriteLine("Shares in companies: ");
-			foreach (var company in MainClass.Partnerships)
-			{
+            foreach (var company in MainClass.Companies)
+            {
                 if (company.ShareholderStructure.ContainsKey(this))
-				{
-					double sharesOwned = company.ShareholderStructure[this];
-					double sharePrice = company.ShareValue;
-					double ownershipPercentage = sharesOwned*100 / company.ShareCount;
-					Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]", sharesOwned, company.Name, sharePrice, sharesOwned*sharePrice, ownershipPercentage);
-					financialAssets += sharesOwned * sharePrice;
-				}
+                {
+                    double sharesOwned = company.ShareholderStructure[this];
+                    double sharePrice = company.ShareValue;
+                    double ownershipPercentage = sharesOwned * 100 / company.ShareCount;
+                    Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]", sharesOwned, company.Name, sharePrice, sharesOwned * sharePrice, ownershipPercentage);
+                    financialAssets += sharesOwned * sharePrice;
+                }
 			}
+			Console.WriteLine("Shares in hedge funds: ");
+			foreach (var fund in MainClass.HedgeFunds)
+            {
+                if (fund.ShareholderStructure.ContainsKey(this))
+                {
+                    double sharesOwned = fund.ShareholderStructure[this];
+                    double sharePrice = fund.ShareValue;
+                    double ownershipPercentage = sharesOwned * 100 / fund.ShareCount;
+                    Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]", sharesOwned, fund.Name, sharePrice, sharesOwned * sharePrice, ownershipPercentage);
+                    financialAssets += sharesOwned * sharePrice;
+                }
+            }
 
 			PrintStructure();
             
@@ -127,8 +148,9 @@ namespace monoconta
 
             Console.WriteLine("-----\n");
 		}
-  
-        protected double setPrevCapIncome = 0;
+
+
+		protected double setPrevCapIncome = 0;
         protected double prevCapIncome = 1;
 	}
 }

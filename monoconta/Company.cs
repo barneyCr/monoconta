@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace monoconta
 {
-	class Partnership : Entity
+	class Company : Entity
 	{
 		public static int ID_COUNTER_BASE;
 		public Dictionary<Entity, double> ShareholderStructure { get; set; }
@@ -14,18 +14,20 @@ namespace monoconta
 			get
 			{
 				if (ShareCount > 1)
-				    return (TotalAssetValue - TotalLiabilitiesValue + Money) / ShareCount;
+					return (TotalAssetValue - TotalLiabilitiesValue + Money) / ShareCount;
 				return ___value;
 			}
 		}
 
-		public Partnership(string name, Entity shareholder, double capital, double initialValue = 10)
+		public Company(string name, Entity shareholder, double capital, double initialValue = 10)
 		{
-			if (capital < 1000) {
-				throw new Exception("Capital must be a minimum of 1000.");
+			if (capital < 1000)
+			{
+				throw new Exception("Capital must be a minimum of 500.");
 			}
-			if (initialValue < 1) {
-				throw new Exception("Minimum $1 initial share price.");
+			if (initialValue < .1)
+			{
+				throw new Exception("Minimum $0.10 initial share price.");
 			}
 			this.Name = name;
 			this.ShareholderStructure = new Dictionary<Entity, double>();
@@ -36,18 +38,19 @@ namespace monoconta
 			this.Deposits = new List<Deposit>();
 			this.Liabilities = new Dictionary<Entity, double>();
 		}
-        
+
 		private double ___value;
-		void SetInitialShareValue(double value) {
+		void SetInitialShareValue(double value)
+		{
 			___value = value;
 		}
 
-		public void SubscribeNewShareholder(Entity entity, double capital)
+		public virtual int SubscribeNewShareholder(Entity entity, double capital)
 		{
 			double newShareCount = (int)(capital / ShareValue);
 			double paid = newShareCount * ShareValue;
-            entity.Money -= paid;
-            this.Money += paid;
+			entity.Money -= paid;
+			this.Money += paid;
 			if (ShareholderStructure.ContainsKey(entity))
 			{
 				ShareholderStructure[entity] += newShareCount;
@@ -56,6 +59,7 @@ namespace monoconta
 			{
 				ShareholderStructure.Add(entity, newShareCount);
 			}
+			return (int)newShareCount;
 		}
 
 		public override void PrintStructure()
@@ -64,18 +68,34 @@ namespace monoconta
 			Console.WriteLine("Shareholders:");
 			foreach (var shareholder in this.ShareholderStructure)
 			{
-				Console.WriteLine("\t{0} owns {1} shares\t[=> {2:C}]   ({3:F2}%)", shareholder.Key.Name, shareholder.Value, shareholder.Value * this.ShareValue, shareholder.Value * 100 /this.ShareCount);
+				Console.WriteLine("\t{0} owns {1} shares\t[=> {2:C}]   ({3:F2}%)", shareholder.Key.Name, shareholder.Value, shareholder.Value * this.ShareValue, shareholder.Value * 100 / this.ShareCount);
 			}
 		}
-
-		public void BuyBackShares(Entity holder, int shares) {
+        
+		public virtual void BuyBackShares(Entity holder, int shares)
+		{
 			if (ShareholderStructure.ContainsKey(holder) && ShareholderStructure[holder] >= shares)
 			{
 				double valueNow = ShareValue;
 				holder.Money += shares * valueNow;
 				this.Money -= shares * valueNow;
 				ShareholderStructure[holder] -= shares;
+				if (ShareholderStructure[holder] < 1)
+				{
+					ShareholderStructure.Remove(holder);
+				}
 			}
+		}
+
+		internal void IssueDividend(double amountPerShare)
+		{
+			foreach (var shareholder in this.ShareholderStructure)
+			{
+				double payment = shareholder.Value * amountPerShare;
+				shareholder.Key.Money += payment;
+				Console.WriteLine("Paid {0:C} to {1}   [{2:F2}%]", payment, shareholder.Key.Name, shareholder.Value * 100 / ShareCount);
+			}         
+			this.Money -= amountPerShare * this.ShareCount;
 		}
 	}
 }

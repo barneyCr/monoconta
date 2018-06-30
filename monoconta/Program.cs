@@ -15,13 +15,14 @@ namespace monoconta
 		{
 			get
 			{
-				return Players.Cast<Entity>().Union(Partnerships.Cast<Entity>());
+				return Players.Cast<Entity>().Union(Companies.Cast<Entity>()).Union(HedgeFunds.Cast<Entity>());
 			}
 		}
 
 
 		public static List<Player> Players;
-		public static List<Partnership> Partnerships;
+		public static List<Company> Companies;
+		public static List<HedgeFund> HedgeFunds;
 		public static double InterestRateBase=1;
 		public static Player admin;
 
@@ -41,11 +42,15 @@ namespace monoconta
 				{
 					Console.Write("{0}: {1:C};\t", player.Name, player.Money);
 				}
-                Console.WriteLine();
-				foreach (var partnership in Partnerships)
-				{
-					Console.Write("{0}: {1:C};\t", partnership.Name, partnership.Money);
-				}
+				Console.WriteLine();
+                foreach (var company in Companies)
+                {
+                    Console.Write("{0}: {1:C};\t", company.Name, company.Money);
+				}Console.WriteLine();
+				foreach (var company in HedgeFunds)
+                {
+                    Console.Write("{0}: {1:C};\t", company.Name, company.Money);
+                }
 				Console.Write("\n>>: ");
 				try
 				{
@@ -84,7 +89,7 @@ namespace monoconta
 						if (player != null)
 						{
 						repeat:
-							player.PassedStartCounter++;
+							player.OnPassedStart();
 							player.Money += startBonus;
 							player.LiabilityTowardsBank *= ((InterestRateBase / (player == admin && command.ToLower() == "passs" ? 2.25 : 2)) / 100 + 1);
 							foreach (var creditor in player.Liabilities.Keys.ToList())
@@ -102,37 +107,43 @@ namespace monoconta
 									player.Deposits.Remove(deposit);
 								}
 							}
-							Console.Write("Show pegged entities status?");
-							bool showpegged = Console.ReadLine() == "yes";
-							foreach (var ent in player.PeggedEntities)
+							if (player.PeggedEntities.Count > 0)
 							{
-								ent.PassedStartCounter++;
-								ent.LiabilityTowardsBank *= ((InterestRateBase / ((player == admin && command.ToLower() == "passs") ? 2.25 : 2)) / 100 + 1);
-                                foreach (var creditor in ent.Liabilities.Keys.ToList())
-                                {
-                                    ent.Liabilities[creditor] *= ((InterestRateBase / 3) / 100 + 1);
-                                }
-                                foreach (var deposit in ent.Deposits.ToList())
-                                {
-                                    if (!deposit.PassRound(player == admin && command.ToLower() == "passs"))
-                                    {
-                                        ent.Money += deposit.Principal;
-                                        ent.Money += deposit.TotalInterest;
-										if (showpegged)
+								Console.Write("Show pegged entities status?");
+								bool showpegged = Console.ReadLine() == "yes";
+								foreach (var ent in player.PeggedEntities)
+								{
+									ent.RegisterBook();
+									ent.LiabilityTowardsBank *= ((InterestRateBase / ((player == admin && command.ToLower() == "passs") ? 2.25 : 2)) / 100 + 1);
+									foreach (var creditor in ent.Liabilities.Keys.ToList())
+									{
+										ent.Liabilities[creditor] *= ((InterestRateBase / 3) / 100 + 1);
+									}
+									foreach (var deposit in ent.Deposits.ToList())
+									{
+										if (!deposit.PassRound(player == admin && command.ToLower() == "passs"))
 										{
-											Console.WriteLine("Deposit reached term");
-											Console.WriteLine("Received principal of {0:C} and total accumulated interest of {1:C}", deposit.Principal, deposit.TotalInterest);
+											ent.Money += deposit.Principal;
+											ent.Money += deposit.TotalInterest;
+											if (showpegged)
+											{
+												Console.WriteLine("Deposit reached term");
+												Console.WriteLine("Received principal of {0:C} and total accumulated interest of {1:C}", deposit.Principal, deposit.TotalInterest);
+											}
+											ent.Deposits.Remove(deposit);
 										}
-                                        ent.Deposits.Remove(deposit);
-                                    }
-                                }
+									}
+									ent.OnPassedStart();
+									if (showpegged)
+										ent.PrintSituation(true);
+								}
 							}
 							if (command.StartsWith("PASS"))
 							{
 								command = null;
 								goto repeat;
 							}
-							player.PrintSituation(true);                     
+							player.PrintSituation(true);
 						}
 					}
 					else if (command.ToLower() == "loan")
@@ -172,11 +183,11 @@ namespace monoconta
 					}
 					else if (command.StartsWith("print"))
 					{
-						var player = ByID(ReadInt("For which player? "));
+						var entity = ByID(ReadInt("For which entity? "));
 						if (command == "printcash")
-							player.PrintCash();
+							entity.PrintCash();
 						else
-							player.PrintSituation(false);
+							entity.PrintSituation(false);
 					}
 					else if (command == "rate")
 					{
@@ -242,18 +253,7 @@ namespace monoconta
 					}
 					else if (command == "deposit")
 					{
-						var depositer = ByID(ReadInt("Depositer: "));
-						int rounds = ReadInt("Rounds money is locked: ");
-						double sum = ReadDouble("Sum of money: ");
-						double setInterestRate = Deposit.CalculateDepositInterestRate(rounds);
-						Console.WriteLine("Interest rate calculated at {0:F4}%/round. Sign? yes/no", setInterestRate);
-						if (Console.ReadLine() == "yes")
-						{
-							depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds, ++depocounter));
-							depositer.Money -= sum;
-							Console.WriteLine("Done");
-						}
-						else Console.WriteLine("Cancelled.");
+						CreateDeposit();
 					}
 					else if (command == "bet")
 					{
@@ -296,7 +296,7 @@ namespace monoconta
 							removed.Player.Money += removed.Deposit.Principal;
 						}
 					}
-					else if (command == "createpartnership")
+					else if (command == "createcompany")
 					{
 						Console.Write("Name: ");
 						string name = Console.ReadLine();
@@ -306,33 +306,139 @@ namespace monoconta
 						Player pegPlayer = ByID(ReadInt("Pegged player ID: ")) as Player;
 						if (pegPlayer != null)
 						{
-							Partnership partnership = new Partnership(name, founder, capital, shareprice);
-							Partnerships.Add(partnership);
-							pegPlayer.PeggedEntities.Add(partnership);
+							Company company = new Company(name, founder, capital, shareprice);
+							Companies.Add(company);
+							pegPlayer.PeggedEntities.Add(company);
 						}
 					}
 					else if (command == "issueshares")
 					{
 						Entity buyer = ByID(ReadInt("Buyer ID: "));
-						Entity issuer = ByID(ReadInt("Issuer ID: "));
+						Company issuer = ByID(ReadInt("Issuer ID: ")) as Company;
 						if (buyer == issuer)
 							throw new Exception("An entity cannot buy shares of itself!");
 						double sum = ReadDouble("Cash invested: ");
 						if (sum > 0)
 						{
-							if (issuer is Partnership)
+							if (issuer != null)
 							{
-								(issuer as Partnership).SubscribeNewShareholder(buyer, sum);
+								(issuer as Company).SubscribeNewShareholder(buyer, sum);
 							}
 						}
 					}
-				}
+					else if (command == "buybackshares")
+					{
+						Entity holder = ByID(ReadInt("Holder ID: "));
+						Entity buyer = ByID(ReadInt("Buyer ID: "));
+						if (holder == buyer)
+							throw new Exception("An entity cannot buy shares of itself!");
+						int shares = ReadInt("Shares: ");
+						if (shares > 0)
+						{
+							if (buyer is Company)
+							{
+								(buyer as Company).BuyBackShares(holder, shares);
+							}
+						}
+					}
+					else if (command == "dividend")
+					{
+						Company issuer = ByID(ReadInt("Which entity? ID: ")) as Company;
+						if (issuer != null)
+						{
+							Console.WriteLine("Share price: {0:C}, liquid/share: {1:C}.", issuer.ShareValue, issuer.Money / issuer.ShareCount);
+							double amountPerShare = ReadDouble("Amount/share: ");
+							issuer.IssueDividend(amountPerShare);
+						}
+					}
+					else if (command == "rename")
+					{
+						Entity entity = ByID(ReadInt("Which entity? ID: "));
+						Console.Write("New name: ");
+						entity.Name = Console.ReadLine();
+					}
+					else if (command == "changepeg")
+					{
+						Entity pegged = ByID(ReadInt("Which entity? ID: "));
+						Player newPlayer = ByID(ReadInt("New player ID: ")) as Player;
+						if (newPlayer != null)
+						{
+							newPlayer.PeggedEntities.Add(pegged);
+							MainClass.Players.FirstOrDefault(p => p.PeggedEntities.Contains(pegged)).PeggedEntities.Remove(pegged);
+						}
+					}
+					else if (command == "createfund")
+					{
+						Console.Write("Name: ");
+						string name = Console.ReadLine();
+						Entity founder = ByID(ReadInt("Founder ID: "));
+						Entity manager = ByID(ReadInt("Manager ID: ")) ?? founder;
+						double capital = ReadDouble("Initial capital: ");
+						double shareprice = ReadDouble("Share price: ");
+						Player pegPlayer = ByID(ReadInt("Pegged player ID: ")) as Player;
+						double fixedFee = ReadDouble("Fixed fee: ");
+						double performanceFee = ReadDouble("Performance fee: ");
+						CompStructure comp = new CompStructure(fixedFee, performanceFee);
+						if (pegPlayer != null && founder != null && shareprice > 0 && capital > 0)
+						{
+							HedgeFund fund = new HedgeFund(name, founder, capital, shareprice, comp, manager);
+							HedgeFunds.Add(fund);
+							pegPlayer.PeggedEntities.Add(fund);
+						}
+					}
+					else if (command == "changefee")
+					{
+						HedgeFund fund = ByID(ReadInt("Fund ID: ")) as HedgeFund;
+						if (fund != null)
+						{
+							Console.WriteLine("{0:F2}% and {1:F2}%", fund.Compensation.AssetFee, fund.Compensation.PerformanceFee);
+							double ff = ReadDouble("Fixed fee: ");
+							double pf = ReadDouble("Performance fee: ");
+							fund.Compensation = new CompStructure(ff, pf);
+						}
+					}
+					else if (command == "changemanager")
+					{
+						HedgeFund fund = ByID(ReadInt("Fund ID: ")) as HedgeFund;
+						Entity manager = ByID(ReadInt("New Manager ID: ")) ?? fund.Manager;
+						fund.Manager = manager;
+					}
+					else if (command == "deleteentity")
+					{
+						Entity entity = ByID(ReadInt("Entity ID: "));
+						if (entity is Company)
+							Companies.Remove(entity as Company);
+						else if (entity is HedgeFund)
+							HedgeFunds.Remove(entity as HedgeFund);
 
+						foreach (var player in Players)
+						{
+							if (player.PeggedEntities.Contains(entity))
+								player.PeggedEntities.Remove(entity);
+						}
+					}
+				}
 				catch (Exception e)
 				{
 					Console.WriteLine(e.Message);
 				}
 			}
+		}
+
+		private static void CreateDeposit()
+		{
+			var depositer = ByID(ReadInt("Depositer: "));
+			int rounds = ReadInt("Rounds money is locked: ");
+			double sum = ReadDouble("Sum of money: ");
+			double setInterestRate = Deposit.CalculateDepositInterestRate(rounds);
+			Console.WriteLine("Interest rate calculated at {0:F4}%/round. Sign? yes/no", setInterestRate);
+			if (Console.ReadLine() == "yes")
+			{
+				depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds, ++depocounter));
+				depositer.Money -= sum;
+				Console.WriteLine("Done");
+			}
+			else Console.WriteLine("Cancelled.");
 		}
 
 		static Random rand = new Random();
@@ -358,9 +464,10 @@ namespace monoconta
 			Players = new List<Player>(names.Select(n => new Player(n, ++Player.IDBASE) { Money = startingAmount }));
 			MainClass.admin = Players.FirstOrDefault(p => char.IsUpper(p.Name[0]));
 			InterestRateBase = ReadDouble("Set interest rate base: ");
-			Partnership.ID_COUNTER_BASE = Player.IDBASE;
+			Company.ID_COUNTER_BASE = Player.IDBASE;
 
-			Partnerships = new List<Partnership>();
+			Companies = new List<Company>();
+			HedgeFunds = new List<HedgeFund>();
 		}
 
 		public static double ReadDouble(string str = null) {
