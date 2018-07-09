@@ -311,19 +311,21 @@ namespace monoconta
 							pegPlayer.PeggedEntities.Add(company);
 						}
 					}
-					else if (command == "issueshares")
+					else if (command == "issuesh")
 					{
 						Entity buyer = ByID(ReadInt("Buyer ID: "));
 						Company issuer = ByID(ReadInt("Issuer ID: ")) as Company;
 						if (buyer == issuer)
 							throw new Exception("An entity cannot buy shares of itself!");
-						double sum = ReadDouble("Cash invested: ");
-						if (sum > 0)
+						if ((buyer is Company) && (buyer as Company).ShareholderStructure.ContainsKey(issuer))
 						{
-							if (issuer != null)
-							{
-								(issuer as Company).SubscribeNewShareholder(buyer, sum);
-							}
+							throw new Exception("Cannot buy shares of a company that owns the other");
+						}
+						double sum = ReadDouble("Cash invested: ");
+						if (sum > 0 && issuer != null)
+						{
+							double premiumPercent = ReadDouble("Premium: ");
+							(issuer as Company).SubscribeNewShareholder(buyer, sum, premiumPercent);
 						}
 					}
 					else if (command == "buybackshares")
@@ -402,6 +404,11 @@ namespace monoconta
 						HedgeFund fund = ByID(ReadInt("Fund ID: ")) as HedgeFund;
 						Entity manager = ByID(ReadInt("New Manager ID: ")) ?? fund.Manager;
 						fund.Manager = manager;
+						if (!fund.ShareholderStructure.ContainsKey(manager))
+						{
+							fund.ShareholderStructure.Add(manager, 0);
+							fund.NewlySubscribedFunds.Add(manager, 0);
+						}
 					}
 					else if (command == "deleteentity")
 					{
@@ -417,7 +424,22 @@ namespace monoconta
 								player.PeggedEntities.Remove(entity);
 						}
 					}
-				}
+					else if(command == "sellshares") {
+						Entity buyer = ByID(ReadInt("Buyer: "));
+						Entity seller = ByID(ReadInt("Seller: "));
+						Company company = ByID(ReadInt("Shares of: ")) as Company;
+						int shares = ReadInt("Share count: ");
+						Console.Write("Price: ");
+						string priceStr = Console.ReadLine();
+						double price;
+						if (string.IsNullOrWhiteSpace(priceStr))
+							price = company.ShareValue;
+						else price = int.Parse(priceStr);
+						if (company != null && company.ShareholderStructure.ContainsKey(seller)) {
+							company.SellShares(seller, buyer, shares, price);
+						}
+					}
+ 				}
 				catch (Exception e)
 				{
 					Console.WriteLine(e.Message);

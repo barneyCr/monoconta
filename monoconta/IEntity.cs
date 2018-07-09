@@ -28,8 +28,7 @@ namespace monoconta
 		public double LiabilityTowardsBank { get; set; }
 		public List<Deposit> Deposits { get; set; }
 		public Dictionary<Entity, double> Liabilities { get; set; }
-
-        
+       
 		public double TotalAssetValue
 		{
 			get

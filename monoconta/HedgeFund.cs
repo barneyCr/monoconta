@@ -19,9 +19,9 @@ namespace monoconta
 			this.PreviousShareValues[0] = initialValue;
         }
 
-		public override int SubscribeNewShareholder(Entity entity, double capital)
+		public override int SubscribeNewShareholder(Entity entity, double capital, double premiumPctg)
 		{
-			int sharesBought = base.SubscribeNewShareholder(entity, capital);
+			int sharesBought = base.SubscribeNewShareholder(entity, capital, premiumPctg);
 			if (NewlySubscribedFunds == null)
 			{
 				NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
@@ -45,7 +45,6 @@ namespace monoconta
 			base.OnPassedStart();
 			var oldSharesDict = NewlySubscribedFunds.ToDictionary(pair => pair.Key, pair => (ShareholderStructure[pair.Key] - pair.Value));
 			double oldSharesCount = oldSharesDict.Sum(p => p.Value);
-			//double diffShareCount = this.ShareCount - oldSharesCount;
 			double oldValue = PreviousShareValues[this.PassedStartCounter == 1 ? 0 : this.PassedStartCounter];
 			double newValue = this.ShareValue;
 			double profitAdded = newValue - oldValue;
@@ -60,7 +59,7 @@ namespace monoconta
 					continue;
 				double holderShares = holder.Value;
 				int sharesTransferedPerformanceFee = Math.Max(0,(int)Math.Ceiling(transferableGainsQuota * holderShares));
-				int sharesTransferedFixedFee = Math.Max(0, (int)Math.Ceiling(this.Compensation.AssetFee / 100.0 * holderShares));
+				int sharesTransferedFixedFee = Math.Max(0, (int)Math.Floor(this.Compensation.AssetFee / 100.0 * holderShares));
 				int shareTransfer = sharesTransferedFixedFee + sharesTransferedPerformanceFee;
 				totalSharesTransferred += shareTransfer;
 				newStructure[holder.Key] -= shareTransfer;
@@ -98,10 +97,10 @@ namespace monoconta
     }
 
 	struct CompStructure {
-		public CompStructure(double assetFee, double perfFee)
+		public CompStructure(double assetFee, double performanceFee)
 		{
 			AssetFee = assetFee;
-			PerformanceFee = perfFee;
+			PerformanceFee = performanceFee;
 		}
 		public double AssetFee;
 		public double PerformanceFee;
