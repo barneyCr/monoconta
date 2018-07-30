@@ -235,16 +235,26 @@ namespace monoconta
 							if (repayer == admin && char.IsUpper(command[0]))
 								amount *= 0.85;
 							repayer.Money -= amount;
-						}
-
+						}                  
 					}
 					else if (command.ToLower() == "refinance")
 					{
 						var debtor = ByID(ReadInt("Who has the debt?"));
 						var financier = ByID(ReadInt("Who is offering the new debt?"));
+						int uidOriginalCreditor = ReadInt("Original creditor (0 = bank): ");
 						double amount = ReadDouble("How much of the debt?");
 						double commission = ReadDouble("Commission (%): ") / 100;
-						debtor.LiabilityTowardsBank -= amount;
+						if (uidOriginalCreditor == 0)
+						{
+							debtor.LiabilityTowardsBank -= amount;
+						}
+						else {
+							var originalCreditor = ByID(uidOriginalCreditor);
+							if(originalCreditor != null && debtor.Liabilities.ContainsKey(originalCreditor)) 
+							{
+								debtor.Liabilities[originalCreditor] -= amount;
+							}
+						}
 						if (debtor.Liabilities.ContainsKey(financier))
 							debtor.Liabilities[financier] += amount * (1 + commission);
 						else
@@ -284,16 +294,16 @@ namespace monoconta
 					else if (command == "deletedeposit")
 					{
 						int id = ReadInt("ID: ");
-						var data = from player in Players
-								   from deposit in player.Deposits
+						var data = from entity in Entities
+								   from deposit in entity.Deposits
 								   where deposit.UID == id
-								   select new { Deposit = deposit, Player = player };
+						                                 select new { Deposit = deposit, Entity = entity };
 
 						var removed = data.FirstOrDefault();
 						if (removed != null)
 						{
-							removed.Player.Deposits.Remove(removed.Deposit);
-							removed.Player.Money += removed.Deposit.Principal;
+							removed.Entity.Deposits.Remove(removed.Deposit);
+							removed.Entity.Money += removed.Deposit.Principal;
 						}
 					}
 					else if (command == "createcompany")
@@ -434,10 +444,15 @@ namespace monoconta
 						double price;
 						if (string.IsNullOrWhiteSpace(priceStr))
 							price = company.ShareValue;
-						else price = int.Parse(priceStr);
+						else price = double.Parse(priceStr);
 						if (company != null && company.ShareholderStructure.ContainsKey(seller)) {
 							company.SellShares(seller, buyer, shares, price);
 						}
+					}
+					else if (command=="setstartpass") {
+						Entity e = ByID(ReadInt("ID: "));
+						int count = ReadInt("Value: ");
+						e.PassedStartCounter = count;
 					}
  				}
 				catch (Exception e)

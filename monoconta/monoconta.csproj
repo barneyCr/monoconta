@@ -39,6 +39,7 @@
     <Compile Include="Company.cs" />
     <Compile Include="IEntity.cs" />
     <Compile Include="HedgeFund.cs" />
+    <Compile Include="Property.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

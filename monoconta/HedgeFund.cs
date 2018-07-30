@@ -66,7 +66,7 @@ namespace monoconta
 				newStructure[Manager] += shareTransfer;
 			}
 			this.ShareholderStructure = newStructure;
-			Console.WriteLine("Fees amount to {0} shares, or {1:F2}%", totalSharesTransferred, totalSharesTransferred/oldSharesCount);
+			Console.WriteLine("Fees amount to {0} shares, or {1:F2}%", totalSharesTransferred, totalSharesTransferred*100/oldSharesCount);
 			NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
 		}
 
