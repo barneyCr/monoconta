@@ -9,6 +9,8 @@ namespace monoconta
 		public Entity Manager { get; set; }
 		public CompStructure Compensation { get; set; }
 
+        public double ManagerVoteMultiplier { get; set; }
+
 		public HedgeFund(string name, Entity founder, double capital, double initialValue, CompStructure comp, Entity manager)
 			: base(name, founder, capital, initialValue)
 		{
@@ -17,6 +19,7 @@ namespace monoconta
 			this.Compensation = comp;
 			this.PreviousShareValues = new Dictionary<int, double>(100);
 			this.PreviousShareValues[0] = initialValue;
+            this.ManagerVoteMultiplier = 30; // default
         }
 
 		public override int SubscribeNewShareholder(Entity entity, double capital, double premiumPctg)
@@ -70,13 +73,14 @@ namespace monoconta
 			NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
 		}
 
-		public override void BuyBackShares(Entity holder, int shares)
+		public override void BuyBackShares(Entity holder, int shares, double premiumPctg)
 		{
 			if (ShareholderStructure.ContainsKey(holder) && ShareholderStructure[holder] >= shares)
             {
                 double valueNow = ShareValue;
-                holder.Money += shares * valueNow;
-                this.Money -= shares * valueNow;
+                double pricePaid = shares * valueNow * (1 - premiumPctg / 100);
+                holder.Money += pricePaid;
+                this.Money -= pricePaid;
                 ShareholderStructure[holder] -= shares;
 				if (ShareholderStructure[holder] < 1 && holder != Manager)
                 {
@@ -85,6 +89,8 @@ namespace monoconta
                 }
             }
 		}
+
+
 
 		public override void PrintStructure()
 		{

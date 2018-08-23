@@ -74,13 +74,14 @@ namespace monoconta
 			}
 		}
         
-		public virtual void BuyBackShares(Entity holder, int shares)
+		public virtual void BuyBackShares(Entity holder, int shares, double premiumPctg)
 		{
 			if (ShareholderStructure.ContainsKey(holder) && ShareholderStructure[holder] >= shares)
 			{
 				double valueNow = ShareValue;
-				holder.Money += shares * valueNow;
-				this.Money -= shares * valueNow;
+                double pricePaid = shares * valueNow * (1 + premiumPctg / 100);
+                holder.Money += pricePaid;
+                this.Money -= pricePaid;
 				ShareholderStructure[holder] -= shares;
 				if (ShareholderStructure[holder] < 1)
 				{
@@ -89,7 +90,7 @@ namespace monoconta
 			}
 		}
 
-		public void SellShares(Entity holder, Entity buyer, int shareCount, double sharePrice)
+		public void SellShares(Entity holder, Entity buyer, int shareCount, double sharePrice, bool managerCondition)
 		{
 			if (buyer == this || holder == this)
 				return;
@@ -98,9 +99,11 @@ namespace monoconta
 
 			if (sharePrice < 0)
 				sharePrice = this.ShareValue;
-			if (GetSharesOwnedBy(holder) > 0)
+            if (GetSharesOwnedBy(holder) >= shareCount)
 			{
 				this.ShareholderStructure[holder] -= shareCount;
+                if (ShareholderStructure[holder] < 1 && !managerCondition)
+                    ShareholderStructure.Remove(holder);
 				holder.Money += shareCount * sharePrice;
 				if (ShareholderStructure.ContainsKey(buyer))
 					ShareholderStructure[buyer] += shareCount;
@@ -121,7 +124,7 @@ namespace monoconta
 			this.Money -= amountPerShare * this.ShareCount;
 		}
 
-		protected int GetSharesOwnedBy(Entity shareholder) {
+		public int GetSharesOwnedBy(Entity shareholder) {
 			if (this.ShareholderStructure.ContainsKey(shareholder))
 				return (int)ShareholderStructure[shareholder];
 			return 0;
