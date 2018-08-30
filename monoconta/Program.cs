@@ -38,6 +38,7 @@ namespace monoconta
         public static void LoadGame()
         {
             Stopwatch watch = Stopwatch.StartNew();
+            Console.Write("Loading");
             if (LoadFromXML(out Neighbourhoods, out Properties))
             {
                 Console.WriteLine("Successfully loaded all real estate\nfrom ClassicBuildings.xml file (in {0:F2} seconds)", watch.Elapsed.TotalSeconds);
@@ -54,7 +55,6 @@ namespace monoconta
             Companies = new List<Company>();
             HedgeFunds = new List<HedgeFund>();
             watch.Stop();
-            //Console.WriteLine("Game loaded in {0:F2} seconds", watch.Elapsed.TotalSeconds);
         }
 
 		public static void Main(string[] args)
@@ -93,12 +93,7 @@ namespace monoconta
                     }
                     else if (command.ToLower().StartsWith("debit"))
                     {
-                        var player = ByID(ReadInt("ID: "));
-                        double amount = ReadDouble("Sum: ");
-                        if (player == admin && char.IsUpper(command[0]))
-                            amount *= 0.9125;
-                        player.Money -= amount;
-                        player.PrintCash();
+                        Debit(command);
                     }
                     else if (command.ToLower() == "transfer")
                     {
@@ -278,7 +273,7 @@ namespace monoconta
                     else if (command == "setstartpass")
                     {
                         SetStartPass();
-                    } 
+                    }
                     else if (command == "resetids")
                     {
                         ResetIDs();
@@ -286,8 +281,7 @@ namespace monoconta
                     else if (command == "propowner")
                     {
                         Entity owner = ByID(ReadInt("Owner ID: "));
-                        Property property = GetProperty(ReadInt("Property ID: "));
-
+                        Property property = ReadProperty();
                         if (property.OptionOwner != null && property.OptionOwner != owner)
                         {
                             Console.WriteLine("Warning! Property has lien towards {0}. Proceed?", property.OptionOwner.Name);
@@ -305,17 +299,37 @@ namespace monoconta
                     }
                     else if (command == "optionowner")
                     {
-                        Entity owner = ByID(ReadInt("Option Owner ID: "));
-                        Property property = GetProperty(ReadInt("Property ID: "));
-                        property.OptionOwner = null;
+                        int id = ReadInt("Option owner ID: ");
+                        Entity owner = id != 0 ? ByID(id) : null;
+                        Property property = ReadProperty();
+                        property.OptionOwner = owner;
                     }
                     else if (command == "rent")
                     {
                         Entity payer = ByID(ReadInt("Guest ID: "));
                         Property land = GetProperty(ReadInt("Land ID: "));
-                        double rent = land.Rent;
+                        double rent;
+                        switch (land.Type)
+                        {
+                            case "res":
+                                rent = land.ResidentialRent;
+                                break;
+                            case "ind":
+                                int dice = ReadInt("Dice: ");
+                                rent = dice * land.Rents[Properties.Where(prop => prop.Type == "ind").All(prop => prop.Owner == land.Owner) ? 1 : 0];
+                                break;
+                            case "tr":
+                                int owned = Properties.Count(prop => prop.Type == "tr" && prop.Owner == land.Owner);
+                                rent = land.Rents[owned - 1];
+                                break;
+                            default:
+                                rent = 0;
+                                break;
+                        }
+
                         Console.WriteLine("Rent of {0:C} was paid to {1}.", rent, land.Owner.Name);
                         Transfer("transfer", land.Owner, payer, rent);
+                        land.RentFlowIn += rent;
                         // todo counter
                     }
                     else if (command == "build")
@@ -324,19 +338,37 @@ namespace monoconta
                     }
                     else if (command == "authorize")
                     {
-                        Property property = GetProperty(ReadInt("Property ID: "));
+                        Property property = ReadProperty();
                         property._authorized = true;
                     }
-                    else if (command == "viewprop") {
-                        Property property = GetProperty(ReadInt("Property ID: "));
-                        if (property.Owner == null) {
+                    else if (command == "viewprop")
+                    {
+                        Property property = ReadProperty();
+                        if (property.Owner == null)
+                        {
                             Console.WriteLine("Property price {0:C}, nbhd {1}, cost to build {2:C}", property.BuyPrice, property.Neighbourhood.Name, property.ConstructionBaseCost);
+                            Console.WriteLine("Option owner: {0}", property.OptionOwner?.Name);
                         }
-                        else {
-                            Console.WriteLine("Owner: "+property.Owner.Name);
-                            Console.WriteLine("Value: " + property.Value);
-                            Console.WriteLine("Rent: " + property.Rent);
+                        else
+                        {
+                            Console.WriteLine("Owner: " + property.Owner.Name);
+                            Console.WriteLine("Value: {0:C}", property.Value);
+                            Console.WriteLine("Residential : {0:C}", property.ResidentialRent);
+                            Console.WriteLine("Rent flow: {0:C}\nMoney spent: {1:C}", property.RentFlowIn, property.MoneyFlowOut);
                         }
+                    }
+                    else if (command == "setpropbuildings") {
+                        Property prop = ReadProperty();
+                        int levels = ReadInt("Levels: ");
+                        int appartments = ReadInt("Appartments: ");
+                        prop.SetBuildings(levels, appartments, 0);
+                    }
+                    else if (command == "setpropflow") {
+                        Property property = ReadProperty(); 
+                        double rentflow = ReadDouble("Rent flow in: ");
+                        double consflow = ReadDouble("Cost flow out: ");
+                        property.SetRentFlowCounter(rentflow);
+                        property.SetConstructionCostCounter(consflow);
                     }
                 }
 				catch (Exception e)
@@ -345,6 +377,13 @@ namespace monoconta
 				}
 			}
 		}
+
+
+
+        private static Property ReadProperty() {
+            return GetProperty(ReadInt("Property ID: "));
+
+        }
 
         private static string Build(string command)
         {
@@ -388,6 +427,35 @@ namespace monoconta
             return command;
         }
 
+        private static void Debit(string command)
+        {
+            var player = ByID(ReadInt("ID: "));
+            double amount = ReadDouble("Sum: ");
+            if (player == admin && char.IsUpper(command[0]))
+                amount *= 0.9125;
+            player.Money -= amount;
+            if (player.Money < 0 && financedeficit)
+            {
+                // let's see how we can finance this
+                Console.WriteLine("Debitor is out of cash. \n\t>Loan (bank, interplayer) [loan]\n\t>Share sale [sellshares,shares,sell,sh]");
+                string variant = Console.ReadLine();
+                if (variant == "loan")
+                {
+                    int from = ReadInt("Creditor ID: ");
+                    Loan("loan", player, from, -player.Money);
+                }
+                else if (variant == "sellshares" || variant == "shares" || variant == "sell" || variant == "sh")
+                {
+                    Company sharesOf = ByID(ReadInt("Shares of: ")) as Company;
+                    double price = ReadDouble("Price: ");
+                    price = price == 0 ? sharesOf.ShareValue : price;
+                    int shareCount = (int)Math.Ceiling((-player.Money) / price);
+                    int shareBuyerID = ReadInt("Beneficiary ID: ");
+                    SellShares(ByID(shareBuyerID), player, sharesOf, shareCount, sharesOf.ShareValue);
+                }
+            }
+        }
+
         static bool financedeficit = true;
         private static void Transfer(string command, Entity beneficiary_ = null, Entity payer_ = null, double? sum_ = null)
         {
@@ -411,14 +479,16 @@ namespace monoconta
                     double price = ReadDouble("Price: ");
                     price = price == 0 ? sharesOf.ShareValue : price;
                     int shareCount = (int)Math.Ceiling((-payer.Money)/price);
-                    SellShares(beneficiary, payer, sharesOf, shareCount, sharesOf.ShareValue);
+                    if (sharesOf == beneficiary)
+                        BuybackShares(payer, beneficiary, shareCount, price/sharesOf.ShareValue*100-100);
+                    else
+                        SellShares(beneficiary, payer, sharesOf, shareCount, sharesOf.ShareValue);
                 }
             }
         }
 
         private static void Pass(string command) {
-            Player player = ByID(ReadInt("ID: ")) as Player;
-            if (player != null)
+            if (ByID(ReadInt("ID: ")) is Player player)
             {
             repeat:
                 player.OnPassedStart();
@@ -557,8 +627,7 @@ namespace monoconta
             Entity founder = ByID(ReadInt("Founder ID: "));
             double capital = ReadDouble("Initial capital: ");
             double shareprice = ReadDouble("Share price: ");
-            Player pegPlayer = ByID(ReadInt("Pegged player ID: ")) as Player;
-            if (pegPlayer != null)
+            if (ByID(ReadInt("Pegged player ID: ")) is Player pegPlayer)
             {
                 Company company = new Company(name, founder, capital, shareprice);
                 Companies.Add(company);
@@ -571,10 +640,10 @@ namespace monoconta
             Entity buyer = ByID(ReadInt("Buyer ID: "));
             Company issuer = ByID(ReadInt("Issuer ID: ")) as Company;
             if (buyer == issuer)
-                throw new Exception("An entity cannot buy shares of itself!");
+                throw new ShareOwnershipConflictException("An entity cannot buy shares of itself!");
             if ((buyer is Company) && (buyer as Company).ShareholderStructure.ContainsKey(issuer))
             {
-                throw new Exception("Cannot buy shares of a company that owns the other");
+                throw new ShareOwnershipConflictException("Cannot buy shares of a company that owns the other");
             }
             double sum = ReadDouble("Cash invested: ");
             if (sum > 0 && issuer != null)
@@ -584,22 +653,25 @@ namespace monoconta
             }
         }
 
-        private static void BuybackShares()
+        private static void BuybackShares(Entity holder_ = null, Entity buyer_ = null, int? shares = null, double? premium_ = null)
         {
-            Entity holder = ByID(ReadInt("Holder ID: "));
-            Entity buyer = ByID(ReadInt("Buyer ID: "));
+            Entity holder = holder_ ?? ByID(ReadInt("Holder ID: "));
+            Entity buyer = buyer_ ?? ByID(ReadInt("Buyer ID: "));
             if (buyer is Company)
             {
-
                 if (holder == buyer)
-                    throw new Exception("An entity cannot buy shares of itself!");
-                Console.WriteLine("Shares or cash: ");
+                    throw new ShareOwnershipConflictException("An entity cannot buy shares of itself!");
                 int value;
-                string read = Console.ReadLine();
-                if (read == "sh" || read == "shares" || read == "s")
-                    value = ReadInt("Shares: ");
-                else value = (int)(ReadInt("Cash: ") / (buyer as Company).ShareValue);
-                double premiumPctg = ReadDouble("Premium: ");
+                if (shares == null)
+                {
+                    Console.WriteLine("Shares or cash: ");
+                    string read = Console.ReadLine();
+                    if (read == "sh" || read == "shares" || read == "s")
+                        value = ReadInt("Shares: ");
+                    else value = (int)(ReadInt("Cash: ") / (buyer as Company).ShareValue);
+                }
+                else value = (int)shares;
+                double premiumPctg = premium_ ?? ReadDouble("Premium: ");
                 if (value > 0)
                 {
                     (buyer as Company).BuyBackShares(holder, value, premiumPctg);

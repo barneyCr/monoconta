@@ -69,7 +69,7 @@ namespace monoconta
 				newStructure[Manager] += shareTransfer;
 			}
 			this.ShareholderStructure = newStructure;
-			Console.WriteLine("Fees amount to {0} shares, or {1:F2}%", totalSharesTransferred, totalSharesTransferred*100/oldSharesCount);
+            Console.WriteLine("Fees amount to {0} shares, {1:C}, or {3:F2}%, hedge fund {2}", totalSharesTransferred, totalSharesTransferred * ShareValue, this.Name, totalSharesTransferred*100/oldSharesCount);
 			NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
 		}
 
@@ -78,7 +78,7 @@ namespace monoconta
 			if (ShareholderStructure.ContainsKey(holder) && ShareholderStructure[holder] >= shares)
             {
                 double valueNow = ShareValue;
-                double pricePaid = shares * valueNow * (1 - premiumPctg / 100);
+                double pricePaid = shares * valueNow * (1 + premiumPctg / 100);
                 holder.Money += pricePaid;
                 this.Money -= pricePaid;
                 ShareholderStructure[holder] -= shares;

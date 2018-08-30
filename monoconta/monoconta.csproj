@@ -43,6 +43,7 @@
     <Compile Include="HedgeFund.cs" />
     <Compile Include="Property.cs" />
     <Compile Include="PropertyReader.cs" />
+    <Compile Include="ShareOwnershipConflictException.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">

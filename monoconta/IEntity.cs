@@ -53,7 +53,9 @@ namespace monoconta
 
         public double RealEstateAssetsValue {
             get{
-                return MainClass.Properties.Where(prop=>prop.Owner == this).Sum(prop => prop.Value);                          
+                double properties = MainClass.Properties.Where(prop=>prop.Owner == this).Sum(prop => prop.Value);
+                double options = MainClass.Properties.Where(prop => prop.OptionOwner == this).Sum(prop => prop.OptionValue);
+                return properties + options;
             }
         }
 
@@ -142,19 +144,19 @@ namespace monoconta
             {
                 if (ppty.Owner == this)
                 {
-                    Console.WriteLine("\t[{0}] {1} in {2} neighbourhood, valued at {3:C}{4}", 
+                    Console.WriteLine("\t[{0}] {1} in {2} neighbourhood, valued at {3:C}\t{4}", 
                                       ppty.ID, 
                                       ppty.Name, 
                                       MainClass.Neighbourhoods.First(n=>ppty.ParentID==n.NID).Name, 
                                       ppty.Value,
-                                      !ppty.HasBuildings && ppty.CanBeBuiltOn ? "\tAUTHORIZED" : "");
+                                      ppty.CanBeBuiltOn ? (ppty.HasBuildings ? "(authorized)" : "NEWLY AUTHORIZED"): "");
                 }
             }
             Console.WriteLine("Real estate options: ");
             foreach (var ppty in MainClass.Properties)
             {
                 if (ppty.OptionOwner == this) {
-                    Console.WriteLine("\tOption on {0} in {1} neighbourhood", ppty.Name, ppty.Neighbourhood.Name);
+                    Console.WriteLine("\tOption on {0} in {1} neighbourhood, valued at {2:C}", ppty.Name, ppty.Neighbourhood.Name,ppty.OptionValue);
                 }
             }
 
