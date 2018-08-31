@@ -6,14 +6,14 @@ namespace monoconta
         public double TotalInterest;
         public double InterestRate;
         public int TotalRounds, RoundsPassed;
-        public int UID;
+        public int DepositID;
         
         public Deposit(double principal, double rate, int rounds, int id)
         {
             this.Principal = principal;
             this.InterestRate = rate;
             this.TotalRounds = rounds;
-            this.UID = id;
+            this.DepositID = id;
         }
 
         public double CurrentCapitalBase 

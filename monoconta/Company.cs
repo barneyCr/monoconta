@@ -129,5 +129,14 @@ namespace monoconta
 				return (int)ShareholderStructure[shareholder];
 			return 0;
 		}
+
+        public double GetOwnershipPctg(Entity shareholder)
+        {
+            try
+            {
+                return ((double)this.ShareholderStructure[shareholder] / this.ShareCount) * 100;
+            }
+            catch  { return 0; }
+        }
 	}
 }

@@ -2,14 +2,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
+using static monoconta.HedgeFund;
 
 #pragma warning disable RECS0063 // Warns when a culture-aware 'StartsWith' call is used by default.
 
 namespace monoconta
 {
-	    
 
-	partial class MainClass
+
+    static partial class MainClass
 	{
 		public static IEnumerable<Entity> Entities
 		{
@@ -353,7 +354,7 @@ namespace monoconta
                         {
                             Console.WriteLine("Owner: " + property.Owner.Name);
                             Console.WriteLine("Value: {0:C}", property.Value);
-                            Console.WriteLine("Residential : {0:C}", property.ResidentialRent);
+                            Console.WriteLine("Residential rent: {0:C}", property.ResidentialRent);
                             Console.WriteLine("Rent flow: {0:C}\nMoney spent: {1:C}", property.RentFlowIn, property.MoneyFlowOut);
                         }
                     }
@@ -369,6 +370,12 @@ namespace monoconta
                         double consflow = ReadDouble("Cost flow out: ");
                         property.SetRentFlowCounter(rentflow);
                         property.SetConstructionCostCounter(consflow);
+                    }
+                    else if (command == "save")
+                    {
+                        SaveGameManager manager = new SaveGameManager("testgame", "testgame.xml");
+                        manager.set(Players, Companies, HedgeFunds, Properties, Neighbourhoods);
+                        manager.Save();
                     }
                 }
 				catch (Exception e)
@@ -418,6 +425,7 @@ namespace monoconta
                         property.BuildWholeLevel();
                     }
                 }
+
             }
             else
             {
@@ -609,7 +617,7 @@ namespace monoconta
             int id = ReadInt("ID: ");
             var data = from entity in Entities
                        from deposit in entity.Deposits
-                       where deposit.UID == id
+                       where deposit.DepositID == id
                        select new { Deposit = deposit, Entity = entity };
 
             var removed = data.FirstOrDefault();
@@ -904,6 +912,10 @@ namespace monoconta
         public static Property GetProperty(string s)
         {
             return Properties.First(p => p.ID == int.Parse(s));
+        }
+
+        public static string ToF3Double(this double d){
+            return d.ToString("F3");
         }
 	}
 }

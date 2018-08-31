@@ -109,7 +109,7 @@ namespace monoconta
             Console.WriteLine("Deposits: ");
             foreach (var deposit in this.Deposits)
             {
-                Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}\t[{4}]", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds, deposit.UID);
+                Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}\t[{4}]", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds, deposit.DepositID);
 				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * (((this is Player) && this == MainClass.admin) || ((this is Company) && MainClass.admin != null && MainClass.admin.PeggedEntities.Contains(this as Company)) ? MainClass._m_ : 1);
                 financialAssets += deposit.CurrentCapitalBase;
             }
