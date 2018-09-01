@@ -36,6 +36,8 @@ namespace monoconta
 
 		public static int depocounter = 0;
 
+        public static SaveGameManager SGManager;
+
         public static void LoadGame()
         {
             Stopwatch watch = Stopwatch.StartNew();
@@ -177,10 +179,12 @@ namespace monoconta
                     {
 
                     }
-                    else if (command == "whoisadmin")
+                    else if (command == "setadmin")
                     {
-                        if (admin != null)
-                            Console.WriteLine(admin.Name);
+                        if (ByID(ReadInt("Player ID: ")) is Player player)
+                        {
+                            admin = player;
+                        }
                     }
                     else if (command == "setm")
                     {
@@ -358,14 +362,16 @@ namespace monoconta
                             Console.WriteLine("Rent flow: {0:C}\nMoney spent: {1:C}", property.RentFlowIn, property.MoneyFlowOut);
                         }
                     }
-                    else if (command == "setpropbuildings") {
+                    else if (command == "setpropbuildings")
+                    {
                         Property prop = ReadProperty();
                         int levels = ReadInt("Levels: ");
                         int appartments = ReadInt("Appartments: ");
                         prop.SetBuildings(levels, appartments, 0);
                     }
-                    else if (command == "setpropflow") {
-                        Property property = ReadProperty(); 
+                    else if (command == "setpropflow")
+                    {
+                        Property property = ReadProperty();
                         double rentflow = ReadDouble("Rent flow in: ");
                         double consflow = ReadDouble("Cost flow out: ");
                         property.SetRentFlowCounter(rentflow);
@@ -373,9 +379,30 @@ namespace monoconta
                     }
                     else if (command == "save")
                     {
-                        SaveGameManager manager = new SaveGameManager("testgame", "testgame.xml");
-                        manager.set(Players, Companies, HedgeFunds, Properties, Neighbourhoods);
-                        manager.Save();
+                        if (SGManager == null)
+                        {
+                            Console.Write("Game name: ");
+                            string gamename = Console.ReadLine();
+                            Console.Write("Path: ");
+                            string path = Console.ReadLine();
+                            SGManager = new SaveGameManager(gamename, path);
+                        }
+                        Console.Write("Starting... ");
+                        SGManager.set(
+                            Players.ToList(), Companies.ToList(),
+                            HedgeFunds.ToList(), Properties.ToList(),
+                            Neighbourhoods.ToList(), 
+                            InterestRateBase, admin, _m_, 
+                            startBonus, depocounter);
+                        Console.Write("Change file? ");
+                        if (Console.ReadLine() == "yes")
+                        {
+                            Console.Write("New path: ");
+                            SGManager.changePath(Console.ReadLine());
+                            Console.WriteLine("Saving to new file now");
+                        }
+                        SGManager.Save();
+                        Console.WriteLine("Done!");
                     }
                 }
 				catch (Exception e)

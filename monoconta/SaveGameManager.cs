@@ -24,18 +24,34 @@ namespace monoconta
         private List<Property> Properties;
         private List<Neighbourhood> Neighbourhoods;
 
+        private double IRB;
+        private Player admin;
+        private double _m, startbonus;
+        private int depocounter;
+
         internal void set(
-            List<Player> players, List<Company> companies, List<HedgeFund> hedgeFunds, List<Property> properties, List<Neighbourhood> neighbourhoods)
+            List<Player> players, List<Company> companies, List<HedgeFund> hedgeFunds,
+            List<Property> properties, List<Neighbourhood> neighbourhoods, 
+            double irb, Player admin, double m, double bonus, int depocounter)
         {
             this.Players = players;
             this.Companies = companies;
             this.HedgeFunds = hedgeFunds;
             this.Properties = properties;
             this.Neighbourhoods = neighbourhoods;
+            this.IRB = irb;
+            this.admin = admin;
+            this._m = m;
+            this.startbonus = bonus;
+            this.depocounter = depocounter;
         }
 
         private string gameName;
         private string _pathToFile;
+
+        public void changePath(string newOne) {
+            this._pathToFile = newOne;
+        }
 
         public void Save()
         {
@@ -44,50 +60,78 @@ namespace monoconta
                 Indent = true
             };
 
+            if (!_pathToFile.EndsWith(".xml"))
+                _pathToFile += ".xml";
             using (XmlWriter xml = XmlWriter.Create(Environment.CurrentDirectory + "/" + _pathToFile, settings))
             {
                 xml.WriteStartDocument();
+
                 xml.WriteStartElement("game");
                 xml.WriteAttributeString("name", gameName);
 
-                xml.WriteStartElement("entities");
-                //var entities = Players.Cast<Entity>().Union(Companies.Cast<Entity>()).Union(HedgeFunds.Cast<Entity>());
+                WriteConfig(xml);
+                WriteAllEntities(xml);
+                WriteProperties(xml);
 
-                xml.WriteStartElement("players");
-                foreach (var player in this.Players)
-                {
-                    xml.WriteStartElement("player");
-                    xml.WriteAttributeString("uid", player.ID.ToString());
-                    this.WriteBasicEntityProperties(xml, player);
-                    xml.WriteEndElement(); // player
-                }
-                xml.WriteEndElement(); // players
+                xml.WriteEndElement(); // game
+                xml.WriteEndDocument();
+            }
+        }
 
-                xml.WriteStartElement("firms");
-                xml.WriteStartElement("companies");
-                foreach (var comp in Companies)
+        private void WriteConfig(XmlWriter xml)
+        {
+            xml.WriteStartElement("config");
+            xml.WriteElementString("irb", IRB.ToF3Double());
+            if (admin != null)
+                xml.WriteElementString("admin", admin.Name);
+            xml.WriteElementString("m", _m.ToF3Double());
+            xml.WriteElementString("startbonus", startbonus.ToF3Double());
+            xml.WriteElementString("depocounter", depocounter.ToString());
+            xml.WriteEndElement(); // config
+        }
+
+        private void WriteAllEntities(XmlWriter xml)
+        {
+            xml.WriteStartElement("entities");
+
+            xml.WriteStartElement("players");
+            foreach (var player in this.Players)
+            {
+                xml.WriteStartElement("player");
+                xml.WriteAttributeString("uid", player.ID.ToString());
+                this.WriteBasicEntityProperties(xml, player);
+                xml.WriteEndElement(); // player
+            }
+            xml.WriteEndElement(); // players
+
+            xml.WriteStartElement("firms");
+            xml.WriteStartElement("companies");
+            foreach (var comp in Companies)
+            {
+                xml.WriteStartElement("company");
+                xml.WriteAttributeString("cid", comp.ID.ToString());
                 {
-                    xml.WriteStartElement("company");
-                    xml.WriteAttributeString("cid", comp.ID.ToString());
                     this.WriteBasicEntityProperties(xml, comp);
                     this.WriteBasicCompanyProperties(xml, comp);
-                    xml.WriteEndElement();//company
                 }
-                xml.WriteEndElement(); // companies
+                xml.WriteEndElement();//company
+            }
+            xml.WriteEndElement(); // companies
 
-                xml.WriteStartElement("hedgefunds");
-                foreach (var fund in HedgeFunds)
+            xml.WriteStartElement("hedgefunds");
+            foreach (var fund in HedgeFunds)
+            {
+                xml.WriteStartElement("hedgefund");
+                xml.WriteAttributeString("hid", fund.ID.ToString());
                 {
-                    xml.WriteStartElement("hedgefund");
-                    xml.WriteAttributeString("hid", fund.ID.ToString());
                     this.WriteBasicEntityProperties(xml, fund);
                     this.WriteBasicCompanyProperties(xml, fund);
                     xml.WriteStartElement("management");
                     {
                         xml.WriteStartElement("manager");
                         {
-                            xml.WriteElementString("id", fund.Manager.ID.ToString());
-                            xml.WriteElementString("fullname", fund.Manager.Name);
+                            xml.WriteAttributeString("id", fund.Manager.ID.ToString());
+                            xml.WriteString(fund.Manager.Name);
                         }
                         xml.WriteEndElement(); // manager
                         xml.WriteStartElement("compensation");
@@ -98,17 +142,38 @@ namespace monoconta
                         xml.WriteElementString("votepower", fund.ManagerVoteMultiplier.ToString());
                         xml.WriteEndElement(); // compensation
                     }
-                    xml.WriteEndElement(); // management
-                    xml.WriteEndElement();//hedgefund
                 }
-                xml.WriteEndElement(); // hedgefunds
-
-
-                xml.WriteEndElement(); // firms
-
-                xml.WriteEndElement(); // entities
-                xml.WriteEndDocument();
+                xml.WriteEndElement(); // management
+                xml.WriteEndElement();//hedgefund
             }
+            xml.WriteEndElement(); // hedgefunds
+            xml.WriteEndElement(); // firms
+            xml.WriteEndElement(); // entities
+        }
+
+        private void WriteProperties(XmlWriter xml)
+        {
+            xml.WriteStartElement("properties");
+            foreach (var prop in (from pr in Properties where pr.Owner != null || pr.OptionOwner != null select pr))
+            {
+                xml.WriteStartElement("property");
+                xml.WriteAttributeString("pid", prop.ID.ToString());
+                xml.WriteElementString("fullname", prop.Name);
+                if (prop.Owner != null)
+                {
+                    xml.WriteElementString("ownerid", prop.Owner.ID.ToString());
+                    xml.WriteElementString("levels", prop.CompleteLevels.ToString());
+                    xml.WriteElementString("appartments", prop.Appartments.ToString());
+                    xml.WriteElementString("rentflowin", prop.RentFlowIn.ToString());
+                    xml.WriteElementString("moneyflowout", prop.MoneyFlowOut.ToString());
+                }
+                else
+                {
+                    xml.WriteElementString("optionownerid", prop.OptionOwner?.Name);
+                }
+                xml.WriteEndElement();
+            }
+            xml.WriteEndElement();
         }
 
         private void WriteBasicCompanyProperties(XmlWriter xml, Company comp)
@@ -158,6 +223,7 @@ namespace monoconta
                 xml.WriteAttributeString("to", liab.Key.ID.ToString());
                 xml.WriteElementString("fullname", liab.Key.Name.ToString());
                 xml.WriteElementString("value", liab.Value.ToF3Double());
+                xml.WriteEndElement();
             }
             xml.WriteEndElement(); // liabilities
         }

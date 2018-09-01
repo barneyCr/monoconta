@@ -27,8 +27,8 @@ namespace monoconta
         public double[] Rents { get; set; }
         public double BuyPrice { get; set; }
         public double ConstructionBaseCost { get; set; }
-        public double RentFlowIn=0;
-        public double MoneyFlowOut=0;
+        public double RentFlowIn = 0;
+        public double MoneyFlowOut = 0;
 
         public double Value
         {
@@ -52,7 +52,7 @@ namespace monoconta
                      (prop.Owner != null && prop.Owner == this.Owner))
                 );
                 double numerator = owned * 13;
-                double denominator = 6 + this.Neighbourhood.Spaces * 11/6; // 1.8333
+                double denominator = 6 + this.Neighbourhood.Spaces * 11 / 6; // 1.8333
                 double r = ResidentialRent * BalanceSheetValueMultiplier;
                 return (numerator / denominator) * (r < BuyPrice ? BuyPrice : r);
             }
@@ -94,8 +94,10 @@ namespace monoconta
             }
         }
 
-        public bool HasBuildings {
-            get{
+        public bool HasBuildings
+        {
+            get
+            {
                 return CompleteLevels != 0 || Appartments != 0 || Hotels != 0;
             }
         }
@@ -108,23 +110,28 @@ namespace monoconta
             }
         }
 
-        public double GetBuildAppartmentsCost(int count) {
+        public double GetBuildAppartmentsCost(int count)
+        {
             double costFactor = 1;
-            if (Property.LevelCostReduction) {
+            if (Property.LevelCostReduction)
+            {
                 double b = Property.LevelCostMultiplier;
                 for (double i = 0; i < CompleteLevels && b >= 1; i++, b -= Property.LevelCostReductionPace)
                 {
                     costFactor *= b;
                 }
             }
-            else {
+            else
+            {
                 costFactor *= Math.Pow(1.5, CompleteLevels);
             }
             return costFactor * ConstructionBaseCost * count;
         }
 
-        public void BuildAppartments(int count) {
-            if (Appartments + count <= 4) {
+        public void BuildAppartments(int count)
+        {
+            if (Appartments + count <= 4)
+            {
                 double cost = GetBuildAppartmentsCost(count);
                 Owner.Money -= cost;
                 this.MoneyFlowOut += cost;
@@ -132,17 +139,20 @@ namespace monoconta
             }
         }
 
-        public void BuildHotel() {
-            if (Appartments == 4) {
+        public void BuildHotel()
+        {
+            if (Appartments == 4)
+            {
                 double cost = GetBuildAppartmentsCost(2);
                 Owner.Money -= cost;
                 this.MoneyFlowOut += cost;
                 this.Appartments = this.Hotels = 0; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 this.CompleteLevels++;
             }
-        } 
+        }
 
-        public void BuildWholeLevel() {
+        public void BuildWholeLevel()
+        {
             double cost = GetBuildAppartmentsCost(6 - Appartments);
             Owner.Money -= cost;
             this.MoneyFlowOut += cost;
@@ -150,17 +160,20 @@ namespace monoconta
             this.Appartments = this.Hotels = 0;
         }
 
-        public void SetBuildings(int levels, int app, int hotels) {
+        public void SetBuildings(int levels, int app, int hotels)
+        {
             this.CompleteLevels = levels;
             this.Appartments = app;
             this.Hotels = hotels;
         }
 
-        public void SetRentFlowCounter(double rent) {
+        public void SetRentFlowCounter(double rent)
+        {
             this.RentFlowIn = rent;
         }
 
-        public void SetConstructionCostCounter(double cost) {
+        public void SetConstructionCostCounter(double cost)
+        {
             this.MoneyFlowOut = cost;
         }
 
