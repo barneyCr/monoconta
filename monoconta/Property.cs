@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 namespace monoconta
 {
@@ -181,5 +182,12 @@ namespace monoconta
         {
             return (a < b) ? (b < c ? c : b) : (a < c ? c : a);
         }
+    }
+
+    class Neighbourhood
+    {
+        public string Name;
+        public int NID, Spaces;
+        public List<Property> Properties = new List<Property>();
     }
 }

@@ -16,6 +16,15 @@ namespace monoconta
             this.DepositID = id;
         }
 
+        public Deposit(double principal, double acc, int passedR, int totalR, int id, double irb) {
+            this.Principal = principal;
+            this.TotalInterest =acc;
+            this.RoundsPassed = passedR;
+            this.TotalRounds = totalR;
+            this.DepositID = id;
+            this.InterestRate = CalculateDepositInterestRate(TotalRounds, irb);
+        }
+
         public double CurrentCapitalBase 
         {
             get { return this.Principal + this.TotalInterest; }
@@ -26,9 +35,9 @@ namespace monoconta
             this.InterestRate = CalculateDepositInterestRate(this.TotalRounds);
         }
 
-        public static double CalculateDepositInterestRate(int rounds, bool temper = false)
+        public static double CalculateDepositInterestRate(int rounds, double? irb = null, bool temper = false)
         {
-            double depositBase = 5 * MainClass.InterestRateBase / 18;
+            double depositBase = 5 * (irb ?? MainClass.InterestRateBase) / 18;
             double playerDepositInterestSpread = (MainClass.InterestRateBase / 3 - depositBase);
             //const double riskMultiplier = 34 / 117;
             

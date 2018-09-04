@@ -4,10 +4,10 @@ using System.Linq;
 
 namespace monoconta
 {
-	class Company : Entity
+    class Company : Entity
 	{
 		public static int ID_COUNTER_BASE;
-		public Dictionary<Entity, double> ShareholderStructure { get; set; }
+		public Dictionary<Entity, int> ShareholderStructure { get; set; }
 		public double ShareCount { get { return ShareholderStructure.Sum(p => p.Value); } }
 		public double ShareValue
 		{
@@ -19,7 +19,7 @@ namespace monoconta
 			}
 		}
 
-		public Company(string name, Entity shareholder, double capital, double initialValue = 10)
+        public Company(string name, Entity shareholder, double capital, double initialValue = 10)
 		{
 			if (capital < 100)
 			{
@@ -30,7 +30,7 @@ namespace monoconta
 				throw new Exception("Minimum $0.001 initial share price.");
 			}
 			this.Name = name;
-			this.ShareholderStructure = new Dictionary<Entity, double>();
+			this.ShareholderStructure = new Dictionary<Entity, int>();
 			this.ID = ++ID_COUNTER_BASE;
 			SetInitialShareValue(initialValue);
 			SubscribeNewShareholder(shareholder, capital, 0);
@@ -39,6 +39,13 @@ namespace monoconta
 			this.Liabilities = new Dictionary<Entity, double>();
 		}
 
+        internal Company()
+        {
+            this.ShareholderStructure = new Dictionary<Entity, int>();
+            this.Deposits = new List<Deposit>();
+            this.Liabilities = new Dictionary<Entity, double>();
+            SetInitialShareValue(1);
+        }
 		private double ___value;
 		void SetInitialShareValue(double value)
 		{
@@ -49,7 +56,7 @@ namespace monoconta
 		{
 			if (entity == this || (entity is Company && (entity as Company).GetSharesOwnedBy(this) > 0))
 				return 0;
-			double newSharesIssued = (int)(capital / ShareValue);
+			int newSharesIssued = (int)(capital / ShareValue);
 			double paid = newSharesIssued * ShareValue;
 			entity.Money -= paid * (1 + premiumPctg/100);
 			this.Money += paid*(1+premiumPctg/100);

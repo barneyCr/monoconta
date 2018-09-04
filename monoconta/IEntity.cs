@@ -110,7 +110,7 @@ namespace monoconta
             foreach (var deposit in this.Deposits)
             {
                 Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}\t[{4}]", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds, deposit.DepositID);
-				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * (((this is Player) && this == MainClass.admin) || ((this is Company) && MainClass.admin != null && MainClass.admin.PeggedEntities.Contains(this as Company)) ? MainClass._m_ : 1);
+				chargeOnCapital += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * (((this is Player) && this == MainClass.admin) || ((this is Company) && MainClass.admin != null && MainClass.admin.PeggedCompanies.Contains(this as Company)) ? MainClass._m_ : 1);
                 financialAssets += deposit.CurrentCapitalBase;
             }
 
@@ -213,7 +213,7 @@ namespace monoconta
                     double depCharge = 0, creditCharge = 0, costCharge = 0;
                     foreach (var deposit in entity.Deposits)
                     {
-                        depCharge += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * ((MainClass.admin != null && MainClass.admin.PeggedEntities.Contains(this as Company)) ? MainClass._m_ : 1);
+                        depCharge += deposit.CurrentCapitalBase * deposit.InterestRate / 100 * ((MainClass.admin != null && MainClass.admin.PeggedCompanies.Contains(this as Company)) ? MainClass._m_ : 1);
                     }
                     depCharge *= pctg;
                     var book = from e in MainClass.Entities

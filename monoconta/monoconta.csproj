@@ -45,6 +45,8 @@
     <Compile Include="PropertyReader.cs" />
     <Compile Include="ShareOwnershipConflictException.cs" />
     <Compile Include="SaveGameManager.cs" />
+    <Compile Include="ReadGameManager.cs" />
+    <Compile Include="Extensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">

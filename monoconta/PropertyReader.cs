@@ -74,9 +74,5 @@ namespace monoconta
     }
 
 
-    class Neighbourhood {
-        public string Name;
-        public int NID, Spaces;
-        public List<Property> Properties = new List<Property>();
-    }
+
 }

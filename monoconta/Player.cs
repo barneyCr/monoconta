@@ -6,7 +6,7 @@ using System.Linq;
 namespace monoconta
 {
 	[DebuggerDisplay("{Name}, {ID}, {Money}")]
-	class Player:Entity
+	internal class Player:Company
     {
         public static int IDBASE = 0;
         public Player(string name, int id)
@@ -15,10 +15,10 @@ namespace monoconta
             this.ID = id;
             Liabilities = new Dictionary<Entity, double>();
             Deposits = new List<Deposit>();
-			this.PeggedEntities = new List<Entity>();
+			this.PeggedCompanies = new List<Company>();
          }
 
-		public List<Entity> PeggedEntities = new List<Entity>();
+		public List<Company> PeggedCompanies = new List<Company>();
 
         /*
 		public override void PrintSituation(bool passing)

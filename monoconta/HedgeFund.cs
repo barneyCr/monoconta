@@ -22,12 +22,18 @@ namespace monoconta
             this.ManagerVoteMultiplier = 30; // default
         }
 
+        internal HedgeFund() : base()
+        {
+            this.Manager = null;
+            this.PreviousShareValues = new Dictionary<int, double>(100);// { { 0, 10 } };
+        }
+
         public override int SubscribeNewShareholder(Entity entity, double capital, double premiumPctg)
         {
             int sharesBought = base.SubscribeNewShareholder(entity, capital, premiumPctg);
             if (NewlySubscribedFunds == null)
             {
-                NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
+                NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0);
                 return sharesBought; // this is founding
             }
             if (NewlySubscribedFunds.ContainsKey(entity))
@@ -42,7 +48,7 @@ namespace monoconta
         {
             PreviousShareValues[PassedStartCounter + 1] = ShareValue;
         }
-        private Dictionary<int, double> PreviousShareValues { get; set; }
+        public Dictionary<int, double> PreviousShareValues { get; set; }
 
         public override void OnPassedStart()
         {
@@ -56,7 +62,7 @@ namespace monoconta
             double transferableGainsQuota = this.Compensation.PerformanceFee / 100.0 * gainAsQuota;
 
             int totalSharesTransferred = 0;
-            Dictionary<Entity, double> newStructure = this.ShareholderStructure.ToDictionary(pair => pair.Key, pair => pair.Value);
+            Dictionary<Entity, int> newStructure = this.ShareholderStructure.ToDictionary(pair => pair.Key, pair => pair.Value);
             foreach (var holder in this.ShareholderStructure)
             {
                 if (holder.Key == Manager)
@@ -71,7 +77,7 @@ namespace monoconta
             }
             this.ShareholderStructure = newStructure;
             Console.WriteLine("Fees amount to {0} shares, {1:C}, or {3:F2}%, hedge fund {2}", totalSharesTransferred, totalSharesTransferred * ShareValue, this.Name, totalSharesTransferred * 100 / oldSharesCount);
-            NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
+            NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0);
         }
 
         public override void BuyBackShares(Entity holder, int shares, double premiumPctg)
@@ -100,7 +106,7 @@ namespace monoconta
             base.PrintStructure();
         }
 
-        public Dictionary<Entity, double> NewlySubscribedFunds { get; set; }
+        public Dictionary<Entity, int> NewlySubscribedFunds { get; set; }
 
 
         public  struct CompStructure

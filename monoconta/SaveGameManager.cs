@@ -83,7 +83,7 @@ namespace monoconta
             xml.WriteStartElement("config");
             xml.WriteElementString("irb", IRB.ToF3Double());
             if (admin != null)
-                xml.WriteElementString("admin", admin.Name);
+                xml.WriteElementString("admin", admin.ID.ToString());
             xml.WriteElementString("m", _m.ToF3Double());
             xml.WriteElementString("startbonus", startbonus.ToF3Double());
             xml.WriteElementString("depocounter", depocounter.ToString());
@@ -98,7 +98,7 @@ namespace monoconta
             foreach (var player in this.Players)
             {
                 xml.WriteStartElement("player");
-                xml.WriteAttributeString("uid", player.ID.ToString());
+                xml.WriteAttributeString("id", player.ID.ToString());
                 this.WriteBasicEntityProperties(xml, player);
                 xml.WriteEndElement(); // player
             }
@@ -109,7 +109,7 @@ namespace monoconta
             foreach (var comp in Companies)
             {
                 xml.WriteStartElement("company");
-                xml.WriteAttributeString("cid", comp.ID.ToString());
+                xml.WriteAttributeString("id", comp.ID.ToString());
                 {
                     this.WriteBasicEntityProperties(xml, comp);
                     this.WriteBasicCompanyProperties(xml, comp);
@@ -122,7 +122,7 @@ namespace monoconta
             foreach (var fund in HedgeFunds)
             {
                 xml.WriteStartElement("hedgefund");
-                xml.WriteAttributeString("hid", fund.ID.ToString());
+                xml.WriteAttributeString("id", fund.ID.ToString());
                 {
                     this.WriteBasicEntityProperties(xml, fund);
                     this.WriteBasicCompanyProperties(xml, fund);
@@ -139,11 +139,34 @@ namespace monoconta
                             xml.WriteElementString("assetfee", fund.Compensation.AssetFee.ToF3Double());
                             xml.WriteElementString("performancefee", fund.Compensation.PerformanceFee.ToF3Double());
                         }
-                        xml.WriteElementString("votepower", fund.ManagerVoteMultiplier.ToString());
                         xml.WriteEndElement(); // compensation
+                        xml.WriteElementString("votepower", fund.ManagerVoteMultiplier.ToString());
+                        xml.WriteEndElement(); // management
+
+                        xml.WriteStartElement("history");
+                        {
+                            foreach (var item in fund.PreviousShareValues)
+                            {
+                                xml.WriteStartElement("pair");
+                                xml.WriteAttributeString("index", item.Key.ToString());
+                                xml.WriteString(item.Value.ToF3Double());
+                                xml.WriteEndElement(); // pair
+                            }
+                        }
+                        xml.WriteEndElement(); // history
+                        xml.WriteStartElement("newfunds");
+                        {
+                            foreach (var item in fund.NewlySubscribedFunds)
+                            {
+                                xml.WriteStartElement("purchase");
+                                xml.WriteAttributeString("holderID", item.Key.ID.ToString());
+                                xml.WriteString(item.Value.ToString());
+                                xml.WriteEndElement(); // purchase
+                            }
+                        }
+                        xml.WriteEndElement(); // newfunds
                     }
                 }
-                xml.WriteEndElement(); // management
                 xml.WriteEndElement();//hedgefund
             }
             xml.WriteEndElement(); // hedgefunds
@@ -191,6 +214,7 @@ namespace monoconta
             }
 
             xml.WriteEndElement(); // shareholderstructure
+            xml.WriteElementString("peg", Players.First(player => player.PeggedCompanies.Contains(comp)).ID.ToString());
         }
 
         private void WriteBasicEntityProperties(XmlWriter xml, Entity entity)

@@ -16,7 +16,7 @@ namespace monoconta
 		{
 			get
 			{
-				return Players.Cast<Entity>().Union(Companies.Cast<Entity>()).Union(HedgeFunds.Cast<Entity>());
+                return Players.Cast<Entity>().Union(Companies.Cast<Entity>()).Union(HedgeFunds.Cast<Entity>());
 			}
 		}
 
@@ -29,6 +29,7 @@ namespace monoconta
         public static List<Neighbourhood> Neighbourhoods;
 
 		public static double InterestRateBase=1;
+        public static string GameName = "";
 		public static Player admin;
 
 		public static double _m_ = (double)5 / 3;
@@ -38,7 +39,7 @@ namespace monoconta
 
         public static SaveGameManager SGManager;
 
-        public static void LoadGame()
+        public static void LoadGame(string[] args)
         {
             Stopwatch watch = Stopwatch.StartNew();
             Console.Write("Loading");
@@ -46,25 +47,43 @@ namespace monoconta
             {
                 Console.WriteLine("Successfully loaded all real estate\nfrom ClassicBuildings.xml file (in {0:F2} seconds)", watch.Elapsed.TotalSeconds);
             }
+            Console.Write("Load previous game? ");
+            string fileName = Console.ReadLine();
+            fileName = fileName.EndsWith(".xml") || string.IsNullOrWhiteSpace(fileName) ? fileName : fileName + ".xml";
 
-            Console.WriteLine("Players' names:");
-            string[] names = Console.ReadLine().Split(',').Select(s => s.Trim()).ToArray();
-            double startingAmount = ReadDouble("\nStarting amount: ");
-            Players = new List<Player>(names.Select(n => new Player(n, ++Player.IDBASE) { Money = startingAmount }));
-            MainClass.admin = Players.FirstOrDefault(p => char.IsUpper(p.Name[0]));
-            InterestRateBase = ReadDouble("Set interest rate base: ");
-            Company.ID_COUNTER_BASE = Player.IDBASE;
+            args = fileName == ""? args:  new[] { Environment.CurrentDirectory + "/" + fileName };
 
-            Companies = new List<Company>();
-            HedgeFunds = new List<HedgeFund>();
+            if (args.Length >= 1)
+            {
+                Console.Write("Verbose debug: ");
+
+                ReadGameManager readManager = new ReadGameManager(fileName, Console.ReadLine() == "yes");
+                readManager.Read();
+                readManager.Integrate(out Players, out Companies, out HedgeFunds, Properties, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter);
+                SGManager = new SaveGameManager(GameName, fileName);
+            }
+            else
+            {
+                Console.WriteLine("Players' names:");
+                string[] names = Console.ReadLine().Split(',').Select(s => s.Trim()).ToArray();
+                double startingAmount = ReadDouble("\nStarting amount: ");
+                Players = new List<Player>(names.Select(n => new Player(n, ++Player.IDBASE) { Money = startingAmount }));
+                MainClass.admin = Players.FirstOrDefault(p => char.IsUpper(p.Name[0]));
+                InterestRateBase = ReadDouble("Set interest rate base: ");
+
+                Company.ID_COUNTER_BASE = Player.IDBASE;
+
+                Companies = new List<Company>();
+                HedgeFunds = new List<HedgeFund>();
+                Console.WriteLine("Done!\n\n");
+            }
             watch.Stop();
         }
 
 		public static void Main(string[] args)
 		{
-			LoadGame();
+			LoadGame(args);
 
-			Console.WriteLine("Done!\n\n");
 			while (true)
 			{
 				Console.WriteLine("\n\n");
@@ -141,7 +160,7 @@ namespace monoconta
                         int infmax = ReadInt("Interest rates on X rounds: X = ");
                         for (int i = 1; i <= infmax; i++)
                         {
-                            Console.WriteLine("\t{0:F4}% - interest rate for {1}-round deposit", Deposit.CalculateDepositInterestRate(i, char.IsUpper(command[0])), i);
+                            Console.WriteLine("\t{0:F4}% - interest rate for {1}-round deposit", Deposit.CalculateDepositInterestRate(i, InterestRateBase, char.IsUpper(command[0])), i);
                         }
                     }
                     else if (command.ToLower() == "repay")
@@ -270,7 +289,7 @@ namespace monoconta
                         if (((double)company.ShareCount) * ratio == (int)(company.ShareCount * ratio))
 #pragma warning restore RECS0018 // Comparison of floating point numbers with equality operator
                         {
-                            company.ShareholderStructure = company.ShareholderStructure.ToDictionary(pair => pair.Key, pair => pair.Value * ratio);
+                            company.ShareholderStructure = company.ShareholderStructure.ToDictionary(pair => pair.Key, pair => (int)(pair.Value * ratio));
                         }
 
                         Console.WriteLine("\nMarket Cap: {0:C}\nValue/share: {1:C}\nTotal shares: {2}", company.ShareCount * company.ShareValue, company.ShareValue, company.ShareCount);
@@ -515,7 +534,7 @@ namespace monoconta
                     price = price == 0 ? sharesOf.ShareValue : price;
                     int shareCount = (int)Math.Ceiling((-payer.Money)/price);
                     if (sharesOf == beneficiary)
-                        BuybackShares(payer, beneficiary, shareCount, price/sharesOf.ShareValue*100-100);
+                        BuybackShares(payer, beneficiary as Company, shareCount, price/sharesOf.ShareValue*100-100);
                     else
                         SellShares(beneficiary, payer, sharesOf, shareCount, sharesOf.ShareValue);
                 }
@@ -544,11 +563,11 @@ namespace monoconta
                         player.Deposits.Remove(deposit);
                     }
                 }
-                if (player.PeggedEntities.Count > 0)
+                if (player.PeggedCompanies.Count > 0)
                 {
                     Console.Write("Show pegged entities status?");
                     bool showpegged = Console.ReadLine() == "yes";
-                    foreach (var ent in player.PeggedEntities)
+                    foreach (var ent in player.PeggedCompanies)
                     {
                         ent.RegisterBook();
                         ent.LiabilityTowardsBank *= ((InterestRateBase / ((player == admin && command.ToLower() == "passs") ? 2.25 : 2)) / 100 + 1);
@@ -666,7 +685,7 @@ namespace monoconta
             {
                 Company company = new Company(name, founder, capital, shareprice);
                 Companies.Add(company);
-                pegPlayer.PeggedEntities.Add(company);
+                pegPlayer.PeggedCompanies.Add(company);
             }
         }
 
@@ -688,11 +707,11 @@ namespace monoconta
             }
         }
 
-        private static void BuybackShares(Entity holder_ = null, Entity buyer_ = null, int? shares = null, double? premium_ = null)
+        private static void BuybackShares(Entity holder_ = null, Company buyer_ = null, int? shares = null, double? premium_ = null)
         {
             Entity holder = holder_ ?? ByID(ReadInt("Holder ID: "));
-            Entity buyer = buyer_ ?? ByID(ReadInt("Buyer ID: "));
-            if (buyer is Company)
+            Company buyer = buyer_ ?? ByID(ReadInt("Buyer ID: ")) as Company;
+            if (buyer != null)
             {
                 if (holder == buyer)
                     throw new ShareOwnershipConflictException("An entity cannot buy shares of itself!");
@@ -709,7 +728,7 @@ namespace monoconta
                 double premiumPctg = premium_ ?? ReadDouble("Premium: ");
                 if (value > 0)
                 {
-                    (buyer as Company).BuyBackShares(holder, value, premiumPctg);
+                    buyer.BuyBackShares(holder, value, premiumPctg);
                 }
             }
         }
@@ -734,12 +753,11 @@ namespace monoconta
 
         private static void ChangePeg()
         {
-            Entity pegged = ByID(ReadInt("Which entity? ID: "));
-            Player newPlayer = ByID(ReadInt("New player ID: ")) as Player;
-            if (newPlayer != null)
+            Company pegged = ByID(ReadInt("Which company? ID: ")) as Company;
+            if (ByID(ReadInt("New player ID: ")) is Player newPlayer)
             {
-                newPlayer.PeggedEntities.Add(pegged);
-                MainClass.Players.FirstOrDefault(p => p.PeggedEntities.Contains(pegged)).PeggedEntities.Remove(pegged);
+                newPlayer.PeggedCompanies.Add(pegged);
+                MainClass.Players.FirstOrDefault(p => p.PeggedCompanies.Contains(pegged)).PeggedCompanies.Remove(pegged);
             }
         }
 
@@ -759,7 +777,7 @@ namespace monoconta
             {
                 HedgeFund fund = new HedgeFund(name, founder, capital, shareprice, comp, manager);
                 HedgeFunds.Add(fund);
-                pegPlayer.PeggedEntities.Add(fund);
+                pegPlayer.PeggedCompanies.Add(fund);
             }
         }
 
@@ -797,8 +815,8 @@ namespace monoconta
 
             foreach (var player in Players)
             {
-                if (player.PeggedEntities.Contains(entity))
-                    player.PeggedEntities.Remove(entity);
+                if (player.PeggedCompanies.Contains(entity))
+                    player.PeggedCompanies.Remove(entity as Company);
                 if (player.Liabilities.ContainsKey(entity))
                     player.Liabilities.Remove(entity);
             }
@@ -900,10 +918,10 @@ namespace monoconta
 			while (val - generatedSum >= splitsum)
 			{
 				double now = rand.Next((int)(splitsum * 0.9), (int)(splitsum * 1.1));
-				deposits.Add(new Deposit(now, Deposit.CalculateDepositInterestRate(rounds, true), rounds, ++depocounter));
+                deposits.Add(new Deposit(now, Deposit.CalculateDepositInterestRate(rounds, InterestRateBase, true), rounds, ++depocounter));
 				generatedSum += now;
 			}
-			deposits.Add(new Deposit(val - generatedSum, Deposit.CalculateDepositInterestRate(rounds, true), rounds, ++depocounter));
+            deposits.Add(new Deposit(val - generatedSum, Deposit.CalculateDepositInterestRate(rounds, InterestRateBase, true), rounds, ++depocounter));
 			admin.Deposits.AddRange(deposits);
             admin.Money -= val;
 		}
@@ -941,9 +959,7 @@ namespace monoconta
             return Properties.First(p => p.ID == int.Parse(s));
         }
 
-        public static string ToF3Double(this double d){
-            return d.ToString("F3");
-        }
+
 	}
 }
 #pragma warning restore RECS0063 // Warns when a culture-aware 'StartsWith' call is used by default.
