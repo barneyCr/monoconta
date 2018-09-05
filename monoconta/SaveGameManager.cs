@@ -190,9 +190,9 @@ namespace monoconta
                     xml.WriteElementString("rentflowin", prop.RentFlowIn.ToString());
                     xml.WriteElementString("moneyflowout", prop.MoneyFlowOut.ToString());
                 }
-                else
+                else if (prop.OptionOwner != null)
                 {
-                    xml.WriteElementString("optionownerid", prop.OptionOwner?.Name);
+                    xml.WriteElementString("optionownerid", prop.OptionOwner.ID.ToString());
                 }
                 xml.WriteEndElement();
             }

@@ -49,6 +49,8 @@ namespace monoconta
             PreviousShareValues[PassedStartCounter + 1] = ShareValue;
         }
         public Dictionary<int, double> PreviousShareValues { get; set; }
+        public double LastShareSplitRatio { private get; set; }
+        public double LastFeesPaid { get; private set; }
 
         public override void OnPassedStart()
         {
@@ -56,7 +58,7 @@ namespace monoconta
             var oldSharesDict = NewlySubscribedFunds.ToDictionary(pair => pair.Key, pair => (ShareholderStructure[pair.Key] - pair.Value));
             double oldSharesCount = oldSharesDict.Sum(p => p.Value);
             double oldValue = PreviousShareValues[this.PassedStartCounter == 1 ? 0 : this.PassedStartCounter];
-            double newValue = this.ShareValue;
+            double newValue = this.ShareValue*this.LastShareSplitRatio;
             double profitAdded = newValue - oldValue;
             double gainAsQuota = profitAdded / oldValue;
             double transferableGainsQuota = this.Compensation.PerformanceFee / 100.0 * gainAsQuota;
@@ -76,8 +78,10 @@ namespace monoconta
                 newStructure[Manager] += shareTransfer;
             }
             this.ShareholderStructure = newStructure;
-            Console.WriteLine("Fees amount to {0} shares, {1:C}, or {3:F2}%, hedge fund {2}", totalSharesTransferred, totalSharesTransferred * ShareValue, this.Name, totalSharesTransferred * 100 / oldSharesCount);
+            this.LastFeesPaid = totalSharesTransferred * ShareValue;
+            Console.WriteLine("Fees amount to {0} shares, {1:C}, or {3:F2}%, hedge fund {2}", totalSharesTransferred, this.LastFeesPaid, this.Name, totalSharesTransferred * 100 / oldSharesCount);
             NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0);
+            this.LastShareSplitRatio = 1;
         }
 
         public override void BuyBackShares(Entity holder, int shares, double premiumPctg)
@@ -103,6 +107,7 @@ namespace monoconta
         {
             Console.WriteLine("Manager: {0}", this.Manager.Name);
             Console.WriteLine("Fees: {0}% and {1}%", this.Compensation.AssetFee, this.Compensation.PerformanceFee);
+            Console.WriteLine("\tlast round's fees: {0:C}", this.LastFeesPaid);
             base.PrintStructure();
         }
 

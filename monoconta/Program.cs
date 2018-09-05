@@ -135,7 +135,7 @@ namespace monoconta
                         Loan(command);
                     }
                     else if (command.StartsWith("print"))
-{
+                    {
                         var entity = ByID(ReadInt("For which entity? "));
                         if (command == "printcash")
                             entity.PrintCash();
@@ -290,6 +290,10 @@ namespace monoconta
 #pragma warning restore RECS0018 // Comparison of floating point numbers with equality operator
                         {
                             company.ShareholderStructure = company.ShareholderStructure.ToDictionary(pair => pair.Key, pair => (int)(pair.Value * ratio));
+                            if (company is HedgeFund)
+                            {
+                                (company as HedgeFund).LastShareSplitRatio = ratio;
+                            }
                         }
 
                         Console.WriteLine("\nMarket Cap: {0:C}\nValue/share: {1:C}\nTotal shares: {2}", company.ShareCount * company.ShareValue, company.ShareValue, company.ShareCount);
@@ -304,7 +308,8 @@ namespace monoconta
                     }
                     else if (command == "propowner")
                     {
-                        Entity owner = ByID(ReadInt("Owner ID: "));
+                        int id = ReadInt("Owner ID: ");
+                        Entity owner = id != 0 ? ByID(id) : null;
                         Property property = ReadProperty();
                         if (property.OptionOwner != null && property.OptionOwner != owner)
                         {
@@ -649,6 +654,7 @@ namespace monoconta
                 if (originalCreditor != null && debtor.Liabilities.ContainsKey(originalCreditor))
                 {
                     debtor.Liabilities[originalCreditor] -= amount;
+                    originalCreditor.Money += amount;
                 }
             }
             if (debtor.Liabilities.ContainsKey(financier))
