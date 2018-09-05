@@ -6,7 +6,7 @@ using System.Linq;
 namespace monoconta
 {
 	[DebuggerDisplay("{Name}, {ID}, {Money}")]
-	internal class Player:Company
+    internal class Player:Entity
     {
         public static int IDBASE = 0;
         public Player(string name, int id)

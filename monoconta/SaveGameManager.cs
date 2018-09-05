@@ -203,6 +203,7 @@ namespace monoconta
         {
             xml.WriteStartElement("shareholderstructure");
             xml.WriteElementString("sharecount", comp.ShareCount.ToString());
+            xml.WriteElementString("sharevalue", comp.ShareValue.ToF3Double());
             foreach (var shareholder in comp.ShareholderStructure)
             {
                 xml.WriteStartElement("shareholder");

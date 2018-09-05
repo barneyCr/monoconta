@@ -135,7 +135,7 @@ namespace monoconta
                         Loan(command);
                     }
                     else if (command.StartsWith("print"))
-                    {
+{
                         var entity = ByID(ReadInt("For which entity? "));
                         if (command == "printcash")
                             entity.PrintCash();

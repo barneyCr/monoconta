@@ -274,11 +274,12 @@ namespace monoconta
             entity.Deposits = deposits;
             entity.Liabilities = new Dictionary<Entity, double>(10);
             Dictionary<int, double> liabilities = new Dictionary<int, double>();
-            foreach (var debtElement in element.Elements("debt"))
+            foreach (var debtElement in element.Element("liabilities").Elements("debt"))
             {
                 read = str => readerFunc(debtElement, str);
-                int creditorID = debtElement.Attribute("id").Value.ToInt();
+                int creditorID = debtElement.Attribute("to").Value.ToInt();
                 double value = read("value").ToDouble();
+                liabilities.Add(creditorID, value);
             }
             this.UnresolvedLiabilityHoldingDictionary.Add(entity, liabilities);
         }

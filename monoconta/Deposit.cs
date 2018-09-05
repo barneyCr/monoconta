@@ -37,8 +37,9 @@ namespace monoconta
 
         public static double CalculateDepositInterestRate(int rounds, double? irb = null, bool temper = false)
         {
-            double depositBase = 5 * (irb ?? MainClass.InterestRateBase) / 18;
-            double playerDepositInterestSpread = (MainClass.InterestRateBase / 3 - depositBase);
+            double rate = irb ?? MainClass.InterestRateBase;
+            double depositBase = 5 * rate / 18;
+            double playerDepositInterestSpread = (rate / 3 - depositBase);
             //const double riskMultiplier = 34 / 117;
             
             double multi = temper ? MainClass._m_ : 1;
