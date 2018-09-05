@@ -29,7 +29,7 @@ namespace monoconta
         private List<Company> Companies = new List<Company>();
         private List<HedgeFund> HedgeFunds = new List<HedgeFund>();
         private List<Property> Properties = new List<Property>();
-        private List<Neighbourhood> Neighbourhoods = new List<Neighbourhood>();
+        //private List<Neighbourhood> Neighbourhoods = new List<Neighbourhood>();
 
         private string gameName;
         private double IRB;
@@ -39,22 +39,21 @@ namespace monoconta
 
         internal void Integrate(
             out List<Player> players, out List<Company> companies,
-            out List<HedgeFund> hedgeFunds, List<Property> properties,
+            out List<HedgeFund> hedgeFunds,
             out Player admin, out string name,
             out double irb, out double m,
-            out double startbonus, out int depocounter
+            out double startBonus, out int depoCounter
         )
         {
             players = this.Players;
             companies = this.Companies;
             hedgeFunds = this.HedgeFunds;
-            //properties = this.Properties;
             admin = this.admin;
             name = this.gameName;
             irb = this.IRB;
             m = this._m;
-            startbonus = this.startbonus;
-            depocounter = this.depocounter;
+            startBonus = this.startbonus;
+            depoCounter = this.depocounter;
             try
             {
                 Company.ID_COUNTER_BASE = GetAllEntities().Max(e => e.ID);
@@ -89,7 +88,7 @@ namespace monoconta
         }
 
 
-        public void Read()
+        internal void Read(List<Property> propertiesTemplate)
         {
             try
             {
@@ -103,6 +102,7 @@ namespace monoconta
 
                     ReadConfig(game);
                     ReadEntities(game.Element("entities"));
+                    ReadProperties(game.Element("properties"), propertiesTemplate);
                     watch.Stop();
                     Console.WriteLine("Completed in {0:F2} ms!", watch.Elapsed.TotalMilliseconds);
                 }
@@ -112,6 +112,7 @@ namespace monoconta
                 Console.WriteLine(e.Message);
             }
         }
+
 
         private void ReadConfig(XElement game)
         {
@@ -132,6 +133,44 @@ namespace monoconta
             ReadCompanies(entitiesElement.Element("firms").Element("companies"));
             ReadHedgeFunds(entitiesElement.Element("firms").Element("hedgefunds"));
             ResolveMissingLinks();
+        }
+
+
+        private void ReadProperties(XElement propertiesElement, List<Property> propertiesTemplate)
+        {
+            this.Properties = propertiesTemplate;
+            foreach (var propertyElement in propertiesElement.Elements("property"))
+            {
+                int id = propertyElement.Attribute("pid").Value.ToInt();
+                Func<string, int> rint = str => readerFunc(propertyElement, str).ToInt();
+                Func<string, double> rouble = str => readerFunc(propertyElement, str).ToDouble();
+                Property property = Properties.FirstOrDefault(prop => prop.ID == id);
+                if (property == null)
+                {
+                    Console.WriteLine("Warning: undefined property (ID = {0})", id);
+                }
+                else
+                {
+                    if (propertyElement.Element("ownerid") != null)
+                    {
+                        int ownerID = rint("ownerid");
+                        int levels = rint("levels");
+                        int appartments = rint("appartments");
+                        double rentflowin = rouble("rentflowin");
+                        double moneyflowout = rouble("moneyflowout");
+                        property.Owner = GetAllEntities().FirstOrDefault(e => e.ID == ownerID);
+                        property.CompleteLevels = levels;
+                        property.Appartments = appartments;
+                        property.RentFlowIn = rentflowin;
+                        property.MoneyFlowOut = moneyflowout;
+                    }
+                    else if (propertyElement.Element("optionownerid") != null)
+                    {
+                        int optionOwnerID = rint("optionownerid");
+                        property.OptionOwner = GetAllEntities().FirstOrDefault(e => e.ID == optionOwnerID);
+                    }
+                }
+            }
         }
 
         private void ResolveMissingLinks()

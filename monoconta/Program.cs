@@ -58,8 +58,8 @@ namespace monoconta
                 Console.Write("Verbose debug: ");
 
                 ReadGameManager readManager = new ReadGameManager(fileName, Console.ReadLine() == "yes");
-                readManager.Read();
-                readManager.Integrate(out Players, out Companies, out HedgeFunds, Properties, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter);
+                readManager.Read(Properties);
+                readManager.Integrate(out Players, out Companies, out HedgeFunds, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter);
                 SGManager = new SaveGameManager(GameName, fileName);
             }
             else
