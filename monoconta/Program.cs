@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
 using static monoconta.HedgeFund;
+using System.Threading;
 
 #pragma warning disable RECS0063 // Warns when a culture-aware 'StartsWith' call is used by default.
 
@@ -31,6 +32,7 @@ namespace monoconta
 		public static double InterestRateBase=1;
         public static string GameName = "";
 		public static Player admin;
+        public static bool showIDs=false;
 
 		public static double _m_ = (double)5 / 3;
 		public static double startBonus = 2000;
@@ -38,6 +40,7 @@ namespace monoconta
 		public static int depocounter = 0;
 
         public static SaveGameManager SGManager;
+        public static DiceManager DiceManager;
 
         public static void LoadGame(string[] args)
         {
@@ -77,30 +80,32 @@ namespace monoconta
                 HedgeFunds = new List<HedgeFund>();
                 Console.WriteLine("Done!\n\n");
             }
+            DiceManager = new DiceManager();
             watch.Stop();
         }
 
-		public static void Main(string[] args)
-		{
-			LoadGame(args);
+        public static void Main(string[] args)
+        {
+            LoadGame(args);
 
-			while (true)
-			{
-				Console.WriteLine("\n\n");
-				foreach (var player in Players)
-				{
-					Console.Write("{0}: {1:C};\t", player.Name, player.Money);
-				}
-				Console.WriteLine();
+            while (true)
+            {
+                Console.WriteLine("\n\n");
+                foreach (var player in Players)
+                {
+                    Console.Write("{0}{1}: {2:C};\t", player.Name, showIDs ? string.Format(" ({0})", player.ID) : "", player.Money);
+                }
+                Console.WriteLine();
                 foreach (var company in Companies)
                 {
-                    Console.Write("{0}: {1:C};\t", company.Name, company.Money);
-				}Console.WriteLine();
-				foreach (var company in HedgeFunds)
-                {
-                    Console.Write("{0}: {1:C};\t", company.Name, company.Money);
+                    Console.Write("{0}{1}: {2:C};\t", company.Name, showIDs ? string.Format(" ({0})", company.ID) : "", company.Money);
                 }
-				Console.Write("\n>>: ");
+                Console.WriteLine();
+                foreach (var fund in HedgeFunds)
+                {
+                    Console.Write("{0}{1}: {2:C};\t", fund.Name, showIDs ? string.Format(" ({0})", fund.ID) : "", fund.Money);
+                }
+                Console.Write("\n>>: ");
                 try
                 {
                     string command = Console.ReadLine();
@@ -302,6 +307,9 @@ namespace monoconta
                     {
                         SetStartPass();
                     }
+                    else if (command == "showids") {
+                        MainClass.showIDs = !MainClass.showIDs;
+                    }
                     else if (command == "resetids")
                     {
                         ResetIDs();
@@ -401,6 +409,22 @@ namespace monoconta
                         property.SetRentFlowCounter(rentflow);
                         property.SetConstructionCostCounter(consflow);
                     }
+                    else if (command == "orderpropsby")
+                    {
+                        Console.Write("Order by: ");
+                        command = Console.ReadLine();
+                        switch (command)
+                        {
+                            case "nbhd":
+                            case "neighbourhood":
+                            case "color":
+                            case "type":
+                                Entity.OrderPropertiesByID = false;
+                                break;
+                            default:
+                                Entity.OrderPropertiesByID = true; break;
+                        }
+                    }
                     else if (command == "save")
                     {
                         if (SGManager == null)
@@ -415,8 +439,8 @@ namespace monoconta
                         SGManager.set(
                             Players.ToList(), Companies.ToList(),
                             HedgeFunds.ToList(), Properties.ToList(),
-                            Neighbourhoods.ToList(), 
-                            InterestRateBase, admin, _m_, 
+                            Neighbourhoods.ToList(),
+                            InterestRateBase, admin, _m_,
                             startBonus, depocounter);
                         Console.Write("Change file? ");
                         if (Console.ReadLine() == "yes")
@@ -428,15 +452,23 @@ namespace monoconta
                         SGManager.Save();
                         Console.WriteLine("Done!");
                     }
+                    else if (command == "dice") {
+                        Dice();
+                    }
                 }
-				catch (Exception e)
-				{
-					Console.WriteLine(e.Message);
-				}
-			}
-		}
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+            }
+        }
 
-
+        private static void Dice()
+        {
+            int d1, d2;
+            DiceManager.GetDice(out d1, out d2);
+            Console.WriteLine("{0} -- {1}", d1, d2);
+        }
 
         private static Property ReadProperty() {
             return GetProperty(ReadInt("Property ID: "));

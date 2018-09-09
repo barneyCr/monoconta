@@ -10,6 +10,10 @@ namespace monoconta
     [DebuggerDisplay("{Name}, {ID}, {Money}")]
 	abstract class Entity
 	{
+        static Entity() {
+            OrderPropertiesByID = true;
+        }
+
 		public int ID { get; set; }
 		public string Name { get; set; }
 		public int PassedStartCounter { get; set; }
@@ -72,6 +76,7 @@ namespace monoconta
 		}
 
 
+        public static bool OrderPropertiesByID { get; set; }
 		public void PrintCash()
         {
             Console.WriteLine("\n-------\n[({0}) {1}] Cash: {2:C}", ID, Name, Money);
@@ -140,7 +145,7 @@ namespace monoconta
             }
 
             Console.WriteLine("Real estate assets: ");
-            foreach (var ppty in MainClass.Properties)
+            foreach (var ppty in MainClass.Properties.OrderBy(prop=>OrderPropertiesByID ? prop.ID : prop.ParentID))
             {
                 if (ppty.Owner == this)
                 {
@@ -153,7 +158,7 @@ namespace monoconta
                 }
             }
             Console.WriteLine("Real estate options: ");
-            foreach (var ppty in MainClass.Properties)
+            foreach (var ppty in MainClass.Properties.OrderBy(prop => OrderPropertiesByID ? prop.ID : prop.ParentID))
             {
                 if (ppty.OptionOwner == this) {
                     Console.WriteLine("\tOption on {0} in {1} neighbourhood, valued at {2:C}", ppty.Name, ppty.Neighbourhood.Name,ppty.OptionValue);
