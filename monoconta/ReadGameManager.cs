@@ -58,7 +58,7 @@ namespace monoconta
             {
                 Company.ID_COUNTER_BASE = GetAllEntities().Max(e => e.ID);
             }
-            catch (Exception e) {
+            catch (Exception) {
                 throw new Exception("No entities...");
             }
         }
@@ -69,8 +69,12 @@ namespace monoconta
         private readonly Dictionary<HedgeFund, int> UnresolvedFundManagersDictionary;
         private readonly Dictionary<HedgeFund, Dictionary<int, int>> UnresolvedNewMoneyInFundDictionary;
 
-        private Func<XElement, string, string> readerFunc = (el, str) => el.Element(str).Value;
+        private readonly Func<XElement, string, string> readerFunc = (el, str) => el.Element(str).Value;
 
+        /// <summary>
+        /// Yields all players, companies and funds.
+        /// </summary>
+        /// <returns>The all entities.</returns>
         IEnumerable<Entity> GetAllEntities()
         {
             foreach (var player in Players)

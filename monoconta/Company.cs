@@ -56,10 +56,11 @@ namespace monoconta
 		{
 			if (entity == this || (entity is Company && (entity as Company).GetSharesOwnedBy(this) > 0))
 				return 0;
-			int newSharesIssued = (int)(capital / ShareValue);
-			double paid = newSharesIssued * ShareValue;
-			entity.Money -= paid * (1 + premiumPctg/100);
-			this.Money += paid*(1+premiumPctg/100);
+            double sharePriceAfterPremium = ShareValue * (1 + premiumPctg / 100);
+            int newSharesIssued = (int)(capital / sharePriceAfterPremium);
+            double paid = newSharesIssued * sharePriceAfterPremium; // we do this because 110$/(20$/share) => only 5 shares => 100$ is paid only
+			entity.Money -= paid; // cap exp
+			this.Money += paid; // cash infusion
 			if (ShareholderStructure.ContainsKey(entity))
 			{
 				ShareholderStructure[entity] += newSharesIssued;
@@ -73,11 +74,11 @@ namespace monoconta
 
 		public override void PrintStructure()
 		{
-			Console.WriteLine("\nShare value: {0:C}\nShare count: {1}\nMarket value: {2:C}", this.ShareValue, this.ShareCount, this.ShareValue * this.ShareCount);
+            Console.WriteLine("\nShare value: {0:C2}\nShare count: {1}\nMarket value: {2:C}", this.ShareValue, this.ShareCount, this.ShareValue * this.ShareCount);
 			Console.WriteLine("Shareholders:");
 			foreach (var shareholder in this.ShareholderStructure)
 			{
-				Console.WriteLine("\t{0} owns {1} shares\t[=> {2:C}]   ({3:F2}%)", shareholder.Key.Name, shareholder.Value, shareholder.Value * this.ShareValue, shareholder.Value * 100 / this.ShareCount);
+				Console.WriteLine("\t{0} owns {1} shares\t[=> {2:C}]   ({3:F3}%)", shareholder.Key.Name, shareholder.Value, shareholder.Value * this.ShareValue, shareholder.Value * 100 / this.ShareCount);
 			}
 		}
         

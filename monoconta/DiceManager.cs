@@ -6,29 +6,33 @@ namespace monoconta
     public class DiceManager
     {
         private byte[] array;
-        private Random randomizer;
+        private readonly Random randomizer;
         int pos = 0;
         public DiceManager()
         {
-            array = new byte[256];
-            randomizer = new Random();
-            generate();
+            this.array = new byte[32];
+            this.randomizer = new Random();
+            this.Generate();
         }
 
-        void generate() {
-            Console.WriteLine("Generating random numbers...");
-            randomizer.NextBytes(array);
+        void Generate()
+        {
+            Console.WriteLine("Generating set of random numbers...");
+            this.randomizer.NextBytes(array);
         }
 
-        public void GetDice(out int d1, out int d2) {
-            if (pos+2>255) {
-                generate();
-                pos = 0;
-                 GetDice(out d1,out d2);
+        public void GetDice(out int d1, out int d2)
+        {
+            if (pos + 1 > 31)
+            {
+                this.Generate();
+                this.pos = 0;
+                this.GetDice(out d1, out d2);
             }
-            else {
-                d1 = (int)array[pos++]%6+1;
-                d2 = (int)array[pos++]%6+1;
+            else
+            {
+                d1 = (int)array[pos++] % 6 + 1;
+                d2 = (int)array[pos++] % 6 + 1;
             }
         }
     }

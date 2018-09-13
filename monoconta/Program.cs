@@ -9,35 +9,32 @@ using System.Threading;
 
 namespace monoconta
 {
-
-
     static partial class MainClass
-	{
-		public static IEnumerable<Entity> Entities
-		{
-			get
-			{
+    {
+        public static IEnumerable<Entity> Entities
+        {
+            get
+            {
                 return Players.Cast<Entity>().Union(Companies.Cast<Entity>()).Union(HedgeFunds.Cast<Entity>());
-			}
-		}
+            }
+        }
 
-
-		public static List<Player> Players;
-		public static List<Company> Companies;
-		public static List<HedgeFund> HedgeFunds;
+        public static List<Player> Players;
+        public static List<Company> Companies;
+        public static List<HedgeFund> HedgeFunds;
 
         public static List<Property> Properties;
         public static List<Neighbourhood> Neighbourhoods;
 
-		public static double InterestRateBase=1;
+        public static double InterestRateBase = 1;
         public static string GameName = "";
-		public static Player admin;
-        public static bool showIDs=false;
+        public static Player admin;
+        public static bool showIDs = false;
 
-		public static double _m_ = (double)5 / 3;
-		public static double startBonus = 2000;
+        public static double _m_ = (double)5 / 3;
+        public static double startBonus = 2000;
 
-		public static int depocounter = 0;
+        public static int depocounter = 0;
 
         public static SaveGameManager SGManager;
         public static DiceManager DiceManager;
@@ -50,11 +47,11 @@ namespace monoconta
             {
                 Console.WriteLine("Successfully loaded all real estate\nfrom ClassicBuildings.xml file (in {0:F2} seconds)", watch.Elapsed.TotalSeconds);
             }
-            Console.Write("Load previous game? ");
+            Console.Write("Load previous session? ");
             string fileName = Console.ReadLine();
             fileName = fileName.EndsWith(".xml") || string.IsNullOrWhiteSpace(fileName) ? fileName : fileName + ".xml";
 
-            args = fileName == ""? args:  new[] { Environment.CurrentDirectory + "/" + fileName };
+            args = fileName == "" ? args : new[] { Environment.CurrentDirectory + "/" + fileName };
 
             if (args.Length >= 1)
             {
@@ -307,7 +304,8 @@ namespace monoconta
                     {
                         SetStartPass();
                     }
-                    else if (command == "showids") {
+                    else if (command == "showids")
+                    {
                         MainClass.showIDs = !MainClass.showIDs;
                     }
                     else if (command == "resetids")
@@ -452,7 +450,8 @@ namespace monoconta
                         SGManager.Save();
                         Console.WriteLine("Done!");
                     }
-                    else if (command == "dice") {
+                    else if (command == "dice")
+                    {
                         Dice();
                     }
                 }
@@ -470,7 +469,8 @@ namespace monoconta
             Console.WriteLine("{0} -- {1}", d1, d2);
         }
 
-        private static Property ReadProperty() {
+        private static Property ReadProperty()
+        {
             return GetProperty(ReadInt("Property ID: "));
 
         }
@@ -550,35 +550,39 @@ namespace monoconta
         static bool financedeficit = true;
         private static void Transfer(string command, Entity beneficiary_ = null, Entity payer_ = null, double? sum_ = null)
         {
-            var beneficiary = beneficiary_?? ByID(ReadInt("ID of person receiving money: "));
-            var payer = payer_?? ByID(ReadInt("ID of person paying: "));
-            double sum =  sum_?? ReadDouble("Sum: ");
+            var beneficiary = beneficiary_ ?? ByID(ReadInt("ID of person receiving money: "));
+            var payer = payer_ ?? ByID(ReadInt("ID of person paying: "));
+            double sum = sum_ ?? ReadDouble("Sum: ");
             beneficiary.Money += sum * (beneficiary == admin && char.IsUpper(command[0]) ? 1.125 : 1);
             payer.Money -= sum * (payer == admin && char.IsUpper(command[0]) ? 0.9 : 1);
             //beneficiary.PrintCash();
             //payer.PrintCash();
-            if (payer.Money < 0 && financedeficit) {
+            if (payer.Money < 0 && financedeficit)
+            {
                 // let's see how we can finance this
                 Console.WriteLine("Debitor is out of cash. \n\t>Loan (bank, interplayer) [loan]\n\t>Share transfer [sellshares]");
                 string variant = Console.ReadLine();
-                if (variant == "loan") {
+                if (variant == "loan")
+                {
                     int from = ReadInt("Creditor ID: ");
                     Loan("loan", payer, from, -payer.Money);
                 }
-                else if (variant == "sellshares" || variant == "shares" || variant == "sell" || variant == "sh") {
+                else if (variant == "sellshares" || variant == "shares" || variant == "sell" || variant == "sh")
+                {
                     Company sharesOf = ByID(ReadInt("Shares of: ")) as Company;
                     double price = ReadDouble("Price: ");
                     price = price == 0 ? sharesOf.ShareValue : price;
-                    int shareCount = (int)Math.Ceiling((-payer.Money)/price);
+                    int shareCount = (int)Math.Ceiling((-payer.Money) / price);
                     if (sharesOf == beneficiary)
-                        BuybackShares(payer, beneficiary as Company, shareCount, price/sharesOf.ShareValue*100-100);
+                        BuybackShares(payer, beneficiary as Company, shareCount, price / sharesOf.ShareValue * 100 - 100);
                     else
                         SellShares(beneficiary, payer, sharesOf, shareCount, sharesOf.ShareValue);
                 }
             }
         }
 
-        private static void Pass(string command) {
+        private static void Pass(string command)
+        {
             if (ByID(ReadInt("ID: ")) is Player player)
             {
             repeat:
@@ -620,7 +624,7 @@ namespace monoconta
                                 ent.Money += deposit.TotalInterest;
                                 if (showpegged)
                                 {
-                                    Console.WriteLine("Deposit reached term");
+                                    Console.WriteLine("Deposit {0} reached term", deposit.DepositID);
                                     Console.WriteLine("Received principal of {0:C} and total accumulated interest of {1:C}", deposit.Principal, deposit.TotalInterest);
                                 }
                                 ent.Deposits.Remove(deposit);
@@ -760,7 +764,8 @@ namespace monoconta
                     string read = Console.ReadLine();
                     if (read == "sh" || read == "shares" || read == "s")
                         value = ReadInt("Shares: ");
-                    else value = (int)(ReadInt("Cash: ") / (buyer as Company).ShareValue);
+                    else 
+                        value = (int)(ReadInt("Cash: ") / (buyer as Company).ShareValue);
                 }
                 else value = (int)shares;
                 double premiumPctg = premium_ ?? ReadDouble("Premium: ");
@@ -773,8 +778,7 @@ namespace monoconta
 
         private static void DividendManager()
         {
-            Company issuer = ByID(ReadInt("Which entity? ID: ")) as Company;
-            if (issuer != null)
+            if (ByID(ReadInt("Which entity? ID: ")) is Company issuer)
             {
                 Console.WriteLine("Share price: ${0:F4}, liquid/share: ${1:F4}.", issuer.ShareValue, issuer.Money / issuer.ShareCount);
                 double amountPerShare = ReadDouble("Amount/share: ");
@@ -821,10 +825,9 @@ namespace monoconta
 
         private static void ChangeFee()
         {
-            HedgeFund fund = ByID(ReadInt("Fund ID: ")) as HedgeFund;
-            if (fund != null)
+            if (ByID(ReadInt("Fund ID: ")) is HedgeFund fund)
             {
-                Console.WriteLine("{0:F2}% and {1:F2}%", fund.Compensation.AssetFee, fund.Compensation.PerformanceFee);
+                Console.WriteLine("Current fees: {0:F3}% and {1:F3}%", fund.Compensation.AssetFee, fund.Compensation.PerformanceFee);
                 double ff = ReadDouble("Fixed fee: ");
                 double pf = ReadDouble("Performance fee: ");
                 fund.Compensation = new CompStructure(ff, pf);
@@ -862,9 +865,9 @@ namespace monoconta
 
         private static void SellShares(Entity buyer_ = null, Entity seller_ = null, Company sharesOf_ = null, int? shareCount = null, double? price_ = null)
         {
-            Entity buyer = buyer_?? ByID(ReadInt("Buyer: "));
-            Entity seller = seller_?? ByID(ReadInt("Seller: "));
-            Company company = sharesOf_?? ByID(ReadInt("Shares of: ")) as Company;
+            Entity buyer = buyer_ ?? ByID(ReadInt("Buyer: "));
+            Entity seller = seller_ ?? ByID(ReadInt("Seller: "));
+            Company company = sharesOf_ ?? ByID(ReadInt("Shares of: ")) as Company;
             int shares = shareCount ?? ReadInt("Share count: ");
             double price;
             if (price_ == null)
@@ -927,66 +930,64 @@ namespace monoconta
 
         private static void SetVoteMultiplier()
         {
-            HedgeFund h = ByID(ReadInt("Hedge fund ID: ")) as HedgeFund;
-            double count = ReadDouble("Value: ");
-            h.ManagerVoteMultiplier = count;
+            (ByID(ReadInt("Hedge fund ID: ")) as HedgeFund).ManagerVoteMultiplier = ReadDouble("Value: ");
         }
 
         private static void CreateDeposit()
-		{
-			var depositer = ByID(ReadInt("Depositer: "));
-			int rounds = ReadInt("Rounds money is locked: ");
-			double sum = ReadDouble("Sum of money: ");
-			double setInterestRate = Deposit.CalculateDepositInterestRate(rounds);
-			Console.WriteLine("Interest rate calculated at {0:F4}%/round. Sign? yes/no", setInterestRate);
-			if (Console.ReadLine() == "yes")
-			{
-				depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds, ++depocounter));
-				depositer.Money -= sum;
-				Console.WriteLine("Done");
-			}
-			else Console.WriteLine("Cancelled.");
-		}
+        {
+            var depositer = ByID(ReadInt("Depositer: "));
+            int rounds = ReadInt("Rounds money is locked: ");
+            double sum = ReadDouble("Sum of money: ");
+            double setInterestRate = Deposit.CalculateDepositInterestRate(rounds);
+            Console.WriteLine("Interest rate calculated at {0:F4}%/round. Sign? yes/no", setInterestRate);
+            if (Console.ReadLine() == "yes")
+            {
+                depositer.Deposits.Add(new Deposit(sum, setInterestRate, rounds, ++depocounter));
+                depositer.Money -= sum;
+                Console.WriteLine("Done");
+            }
+            else Console.WriteLine("Cancelled.");
+        }
 
-		static Random rand = new Random();
-		private static void LoanSplit(double val, int splitsum, int rounds)
-		{
-			double generatedSum = 0;
-			List<Deposit> deposits = new List<Deposit>();
-			while (val - generatedSum >= splitsum)
-			{
-				double now = rand.Next((int)(splitsum * 0.9), (int)(splitsum * 1.1));
+        static Random rand = new Random();
+        private static void LoanSplit(double val, int splitsum, int rounds)
+        {
+            double generatedSum = 0;
+            List<Deposit> deposits = new List<Deposit>();
+            while (val - generatedSum >= splitsum)
+            {
+                double now = rand.Next((int)(splitsum * 0.9), (int)(splitsum * 1.1));
                 deposits.Add(new Deposit(now, Deposit.CalculateDepositInterestRate(rounds, InterestRateBase, true), rounds, ++depocounter));
-				generatedSum += now;
-			}
+                generatedSum += now;
+            }
             deposits.Add(new Deposit(val - generatedSum, Deposit.CalculateDepositInterestRate(rounds, InterestRateBase, true), rounds, ++depocounter));
-			admin.Deposits.AddRange(deposits);
+            admin.Deposits.AddRange(deposits);
             admin.Money -= val;
-		}
+        }
 
-		public static double ReadDouble(string str = null) {
-			if (str != null) 
-				Console.Write(str);
-			if (double.TryParse(Console.ReadLine(), out double s))
-				return s;
-			else return 0;
-		}
-		public static int ReadInt(string str = null)
+        public static double ReadDouble(string str = null)
         {
             if (str != null)
                 Console.Write(str);
-			if (int.TryParse(Console.ReadLine(), out int s))
-				return s;
-			else return 0;
+            return double.TryParse(Console.ReadLine(), out double s) ? s : 0;
+        }
+        public static int ReadInt(string str = null)
+        {
+            if (str != null)
+                Console.Write(str);
+            return int.TryParse(Console.ReadLine(), out int s) ? s : 0;
         }
 
-		public static Entity ByID(string s) {
-			return Entities.First(p => p.ID == int.Parse(s));
-		}
+        public static Entity ByID(string s)
+        {
+            int parsedID = int.Parse(s);
+            return Entities.First(p => p.ID == parsedID);
+        }
 
-		public static Entity ByID(int s) {
-			return Entities.First(p => p.ID == s);
-		}
+        public static Entity ByID(int s)
+        {
+            return Entities.First(p => p.ID == s);
+        }
 
         public static Property GetProperty(int id)
         {
@@ -994,10 +995,9 @@ namespace monoconta
         }
         public static Property GetProperty(string s)
         {
-            return Properties.First(p => p.ID == int.Parse(s));
+            int parsedID = int.Parse(s);
+            return Properties.First(p => p.ID == parsedID);
         }
-
-
-	}
+    }
 }
 #pragma warning restore RECS0063 // Warns when a culture-aware 'StartsWith' call is used by default.

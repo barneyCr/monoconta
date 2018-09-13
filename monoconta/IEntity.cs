@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
 
-
 namespace monoconta
 {
     [DebuggerDisplay("{Name}, {ID}, {Money}")]
@@ -14,6 +13,10 @@ namespace monoconta
             OrderPropertiesByID = true;
         }
 
+        /// <summary>
+        /// Unique Identifier.
+        /// </summary>
+        /// <value>The identifier.</value>
 		public int ID { get; set; }
 		public string Name { get; set; }
 		public int PassedStartCounter { get; set; }
@@ -33,10 +36,15 @@ namespace monoconta
 		}
 
 		public double LiabilityTowardsBank { get; set; }
-		public List<Deposit> Deposits { get; set; }
 		public Dictionary<Entity, double> Liabilities { get; set; }
-       
-		public double TotalAssetValue
+        public List<Deposit> Deposits { get; set; }
+
+
+        /// <summary>
+        /// Includes loans made, deposits, shares in other companies and all real estate assets. Excludes cash.
+        /// </summary>
+        /// <value>The total asset value.</value>
+        public double TotalAssetValue
 		{
 			get
 			{
@@ -44,9 +52,14 @@ namespace monoconta
 				double deposits = this.Deposits.Sum(deposit => deposit.CurrentCapitalBase);
 				double shares = MainClass.Entities.OfType<Company>().Where(entity => entity.ShareholderStructure.ContainsKey(this)).Sum(entity => entity.ShareholderStructure[this] * entity.ShareValue);
                 double reAssets = this.RealEstateAssetsValue;
+
                 return loansMade + deposits + shares + reAssets;
 			}
 		}
+        /// <summary>
+        /// Made up of bank debt and debts owed to other players.
+        /// </summary>
+        /// <value>The total liabilities value.</value>
 		public double TotalLiabilitiesValue
 		{
 			get
@@ -55,6 +68,10 @@ namespace monoconta
 			}
 		}
 
+        /// <summary>
+        /// Includes properties and options.
+        /// </summary>
+        /// <value>The real estate assets' value.</value>
         public double RealEstateAssetsValue {
             get{
                 double properties = MainClass.Properties.Where(prop=>prop.Owner == this).Sum(prop => prop.Value);

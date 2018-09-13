@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Diagnostics;
+
 namespace monoconta
 {
+    [DebuggerDisplay("[{ID}] {Name}")]//, {Owner.Name}, {OptionOwner.Name}")]
     class Property
     {
         public static double LevelRentMultiplier;
