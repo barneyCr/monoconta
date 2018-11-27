@@ -21,6 +21,7 @@ namespace monoconta
 
             this.UnresolvedLiabilityHoldingDictionary = new Dictionary<Entity, Dictionary<int, double>>();
             this.UnresolvedShareholdingDictionary = new Dictionary<Company, Dictionary<int, int>>();
+            this.UnresolvedShortSellingDictionary = new Dictionary<Company, Dictionary<KeyValuePair<int, int>, int>>();
             this.UnresolvedFundManagersDictionary = new Dictionary<HedgeFund, int>();
             this.UnresolvedNewMoneyInFundDictionary = new Dictionary<HedgeFund, Dictionary<int, int>>();
         }
@@ -36,13 +37,14 @@ namespace monoconta
         private Player admin;
         private double _m, startbonus;
         private int depocounter;
+        private double SSFR18;
 
         internal void Integrate(
             out List<Player> players, out List<Company> companies,
             out List<HedgeFund> hedgeFunds,
             out Player admin, out string name,
             out double irb, out double m,
-            out double startBonus, out int depoCounter
+            out double startBonus, out int depoCounter, out double ssfr18
         )
         {
             players = this.Players;
@@ -54,6 +56,7 @@ namespace monoconta
             m = this._m;
             startBonus = this.startbonus;
             depoCounter = this.depocounter;
+            ssfr18 = this.SSFR18;
             try
             {
                 Company.ID_COUNTER_BASE = GetAllEntities().Max(e => e.ID);
@@ -66,6 +69,7 @@ namespace monoconta
         private int ___adminID;
         private readonly Dictionary<Entity, Dictionary<int, double>> UnresolvedLiabilityHoldingDictionary;
         private readonly Dictionary<Company, Dictionary<int, int>> UnresolvedShareholdingDictionary;
+        private readonly Dictionary<Company, Dictionary<KeyValuePair<int,int>, int>> UnresolvedShortSellingDictionary;
         private readonly Dictionary<HedgeFund, int> UnresolvedFundManagersDictionary;
         private readonly Dictionary<HedgeFund, Dictionary<int, int>> UnresolvedNewMoneyInFundDictionary;
 
@@ -128,6 +132,7 @@ namespace monoconta
             this._m = config.Element("m").Value.ToDouble();
             this.startbonus = config.Element("startbonus").Value.ToDouble();
             this.depocounter = config.Element("depocounter").Value.ToInt();
+            this.SSFR18 = config.Element("shortsellratefactor18").Value.ToDouble();
             Console.WriteLine("\tConfig loaded");
         }
 
@@ -190,6 +195,16 @@ namespace monoconta
             {
                 Company company = shareholding.Key;
                 company.ShareholderStructure = shareholding.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value); 
+                missingLinkCounter++;
+            }
+            foreach (KeyValuePair<Company, Dictionary<KeyValuePair<int, int>, int>> shortSale in this.UnresolvedShortSellingDictionary)
+            {
+                Company company = shortSale.Key;
+                company.ShortSellingActivity = shortSale.Value.ToDictionary(
+                    pair=> { IEnumerable<Entity> entities = GetAllEntities();
+                        return new KeyValuePair<Entity, Entity>(entities.First(e => e.ID == pair.Key.Key), entities.First(e => e.ID == pair.Key.Value)); },
+                    pair=>(double)pair.Value
+                );
                 missingLinkCounter++;
             }
             foreach (KeyValuePair<HedgeFund, int> management in this.UnresolvedFundManagersDictionary)
@@ -285,6 +300,15 @@ namespace monoconta
                 unresolvedSharebook.Add(shareHolderID, shares);
             }
             this.UnresolvedShareholdingDictionary.Add(company, unresolvedSharebook);
+            Dictionary<KeyValuePair<int,int>, int> unresolvedShortSellingBook = new Dictionary<KeyValuePair<int, int>, int>();
+            foreach (var shortSellerElement in shareholderStructure.Elements("shortseller"))
+            {
+                int shortSellerID = shortSellerElement.Attribute("id").Value.ToInt();
+                int shareLenderID = shortSellerElement.Element("lender").Value.ToInt();
+                int shareCount = shortSellerElement.Element("shares").Value.ToInt();
+                unresolvedShortSellingBook.Add(new KeyValuePair<int,int>(shortSellerID, shareLenderID), shareCount);
+            }
+            this.UnresolvedShortSellingDictionary.Add(company, unresolvedShortSellingBook);
 
             int peg = companyElement.Element("peg").Value.ToInt();
             Players.First(player => player.ID == peg).PeggedCompanies.Add(company);

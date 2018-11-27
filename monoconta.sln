@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "monoconta", "monoconta\monoconta.csproj", "{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}"
 EndProject
-Project("{9344BDBB-3E7F-41FC-A0DD-8665D75EE146}") = "BetManager", "BetManager\BetManager.csproj", "{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}"
+Project("{9344BDBB-3E7F-41FC-A0DD-8665D75EE146}") = "BetManager", "BetManager\BetManager.csproj", "{45B7A750-5E7F-464E-A59D-12895BA2A09D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,9 +15,31 @@ Global
 		{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}.Debug|x86.Build.0 = Debug|x86
 		{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}.Release|x86.ActiveCfg = Release|x86
 		{307AC4E8-D672-4FA5-A3B6-1CDCDCC7D18F}.Release|x86.Build.0 = Release|x86
-		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Debug|x86.ActiveCfg = Debug|x86
-		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Debug|x86.Build.0 = Debug|x86
-		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Release|x86.ActiveCfg = Release|x86
-		{79CFD0B0-C58C-402E-8DCC-3F46B6864A9F}.Release|x86.Build.0 = Release|x86
+		{45B7A750-5E7F-464E-A59D-12895BA2A09D}.Debug|x86.ActiveCfg = Debug|x86
+		{45B7A750-5E7F-464E-A59D-12895BA2A09D}.Debug|x86.Build.0 = Debug|x86
+		{45B7A750-5E7F-464E-A59D-12895BA2A09D}.Release|x86.ActiveCfg = Release|x86
+		{45B7A750-5E7F-464E-A59D-12895BA2A09D}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		Policies = $0
+		$0.DotNetNamingPolicy = $1
+		$1.DirectoryNamespaceAssociation = Hierarchical
+		$0.TextStylePolicy = $2
+		$2.inheritsSet = null
+		$2.scope = text/x-csharp
+		$0.CSharpFormattingPolicy = $3
+		$3.scope = text/x-csharp
+		$0.TextStylePolicy = $4
+		$4.FileWidth = 80
+		$4.TabsToSpaces = True
+		$4.scope = text/plain
+		$0.TextStylePolicy = $5
+		$5.inheritsSet = null
+		$5.scope = application/xml
+		$0.XmlFormattingPolicy = $6
+		$6.scope = application/xml
+		$0.StandardHeader = $7
+		$0.VersionControlPolicy = $8
+		version = 0.2
 	EndGlobalSection
 EndGlobal

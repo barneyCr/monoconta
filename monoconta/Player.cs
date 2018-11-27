@@ -20,6 +20,7 @@ namespace monoconta
 
 		public List<Company> PeggedCompanies = new List<Company>();
 
+
         /*
 		public override void PrintSituation(bool passing)
         {
@@ -80,7 +81,7 @@ namespace monoconta
         }
         */
 
-		/*public string Name;
+        /*public string Name;
         public int ID, PassedStartCounter;
         public double Money
         {
@@ -105,7 +106,7 @@ namespace monoconta
         {
             Console.WriteLine("[({0}){1}] Cash: {2:C}", ID, Name, Money);
         }*/
-		/*
+        /*
         double setPrevCapIncome = 0;
         double prevCapIncome = 1;
         */

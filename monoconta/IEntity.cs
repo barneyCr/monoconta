@@ -80,7 +80,30 @@ namespace monoconta
             }
         }
 
-		public virtual void PrintStructure() {
+        public double NetWorth
+        {
+            get
+            {
+                return TotalAssetValue + Money - TotalLiabilitiesValue;
+            }
+        }
+        public double CreditExtended
+        {
+            get
+            {
+                double loans = MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
+                double sharesLent = MainClass.Entities.OfType<Company>().
+                    Where(company =>
+                    company.ShortSellingActivity.Any(pair => pair.Key.Key == this)).
+                    Sum(
+                        company => company.ShareValue * company.ShortSellingActivity.Where(
+                            pair => pair.Key.Key == this).Sum(pair => pair.Value));
+                return loans + sharesLent;
+            }
+        }
+
+
+        public virtual void PrintStructure() {
 			//...
 		}
 
@@ -94,7 +117,8 @@ namespace monoconta
 
 
         public static bool OrderPropertiesByID { get; set; }
-		public void PrintCash()
+
+        public void PrintCash()
         {
             Console.WriteLine("\n-------\n[({0}) {1}] Cash: {2:C}", ID, Name, Money);
         }      
@@ -115,6 +139,14 @@ namespace monoconta
                 costOfCapital += credit.Value * MainClass.InterestRateBase / 100 / 3;
                 financialLiabilities += credit.Value;
             }
+            var particularSharesOwed = from comp in MainClass.Entities.OfType<Company>()
+                                       from shortDict in comp.ShortSellingActivity
+                                       where shortDict.Key.Value == this
+                                       select new { Company = comp, Information = shortDict };
+            foreach (var item in particularSharesOwed)
+            {
+                Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
+            }
 
             Console.WriteLine("Loans made: ");
 			var book = from entity in MainClass.Entities
@@ -126,6 +158,14 @@ namespace monoconta
                 Console.WriteLine("\t{0:C} to be received from {1}", credit.Debt, credit.Debtor.Name);
                 chargeOnCapital += credit.Debt * MainClass.InterestRateBase / 100 / 3;
                 financialAssets += credit.Debt;
+            }
+            var particularSharesLent = from comp in MainClass.Entities.OfType<Company>()
+                                       from shortDict in comp.ShortSellingActivity
+                                       where shortDict.Key.Key == this
+                                       select new { Company = comp, Information = shortDict };
+            foreach (var item in particularSharesLent)
+            {
+                Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
             }
 
             Console.WriteLine("Deposits: ");
@@ -141,11 +181,18 @@ namespace monoconta
             {
                 if (company.ShareholderStructure.ContainsKey(this))
                 {
+                    int sharesLent = company.GetSharesLent(this);
                     double sharesOwned = company.ShareholderStructure[this];
                     double sharePrice = company.ShareValue;
                     double ownershipPercentage = sharesOwned * 100 / company.ShareCount;
-                    Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]", sharesOwned, company.Name, sharePrice, sharesOwned * sharePrice, ownershipPercentage);
-                    financialAssets += sharesOwned * sharePrice;
+                    Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]\t{5}", 
+                        sharesOwned, 
+                        company.Name, 
+                        sharePrice, 
+                        sharesOwned * sharePrice,
+                        ownershipPercentage,
+                        sharesLent > 0 ? string.Format("({0} shares lent)", sharesLent).PadLeft(19) : "");
+                    financialAssets += (sharesOwned+sharesLent) * sharePrice;
                 }
 			}
 			Console.WriteLine("Shares in hedge funds: ");
@@ -153,12 +200,37 @@ namespace monoconta
             {
                 if (fund.ShareholderStructure.ContainsKey(this))
                 {
+                    int sharesLent = fund.GetSharesLent(this);
                     double sharesOwned = fund.ShareholderStructure[this];
                     double sharePrice = fund.ShareValue;
                     double ownershipPercentage = sharesOwned * 100 / fund.ShareCount;
-                    Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]", sharesOwned, fund.Name, sharePrice, sharesOwned * sharePrice, ownershipPercentage);
-                    financialAssets += sharesOwned * sharePrice;
+                    Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]\t{5}",
+                        sharesOwned,
+                        fund.Name,
+                        sharePrice,
+                        sharesOwned * sharePrice,
+                        ownershipPercentage,
+                        sharesLent > 0 ? string.Format("({0} shares lent)", sharesLent).PadLeft(19) : "");
+                    financialAssets += (sharesOwned + sharesLent) * sharePrice;
+
                 }
+            }
+            Console.WriteLine("Shorted shares: ");
+            foreach (ShortSellingStructure shortAct in MainClass.Entities.OfType<Company>().SelectMany(c => c.GetShortSellers().Where(structure => structure.ShortSeller == this)))
+            {
+                double sharesShorted = shortAct.ShareCount;
+                double sharePrice = shortAct.ShortedCompany.ShareValue;
+
+                Console.WriteLine("\t{0} shares of {1}, [x{2:C} = {3:C}]\t[{4:F2}%]\t(SSI = {5:C})",
+                    shortAct.ShareCount,
+                    shortAct.ShortedCompany.Name,
+                    sharePrice,
+                    sharesShorted * sharePrice,
+                    sharesShorted / shortAct.ShortedCompany.ShareCount * 100,
+                    sharesShorted * sharePrice * MainClass.SSFR18 / 324 * 151 / 117 * MainClass.InterestRateBase / 100
+                    );
+                financialLiabilities += (sharesShorted) * sharePrice;
+                costOfCapital += sharesShorted * sharePrice * MainClass.SSFR18 / 324 * 151 / 117 * MainClass.InterestRateBase / 100;
             }
 
             Console.WriteLine("Real estate assets: ");
@@ -223,7 +295,7 @@ namespace monoconta
             double chg = 0, cst = 0, nt = 0;
             foreach (Company entity in MainClass.Entities.OfType<Company>())
             {
-                int sharesOwned = entity.GetSharesOwnedBy(this);
+                int sharesOwned = entity.GetSharesOwnedBy(this,false);
                 if (sharesOwned > 0)
                 {
                     double pctg = ((double)sharesOwned) / ((double)entity.ShareCount);
@@ -253,6 +325,7 @@ namespace monoconta
                         costCharge += debts.Value * MainClass.InterestRateBase / 300;
                     }
                     costCharge += entity.LiabilityTowardsBank * MainClass.InterestRateBase / 200;
+
                     costCharge *= pctg;
                     chg += depCharge;
                     chg += creditCharge;

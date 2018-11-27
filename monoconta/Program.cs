@@ -35,6 +35,7 @@ namespace monoconta
         public static double startBonus = 2000;
 
         public static int depocounter = 0;
+        public static double SSFR18 = 0;
 
         public static SaveGameManager SGManager;
         public static DiceManager DiceManager;
@@ -59,7 +60,7 @@ namespace monoconta
 
                 ReadGameManager readManager = new ReadGameManager(fileName, Console.ReadLine() == "yes");
                 readManager.Read(Properties);
-                readManager.Integrate(out Players, out Companies, out HedgeFunds, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter);
+                readManager.Integrate(out Players, out Companies, out HedgeFunds, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
                 SGManager = new SaveGameManager(GameName, fileName);
             }
             else
@@ -439,7 +440,7 @@ namespace monoconta
                             HedgeFunds.ToList(), Properties.ToList(),
                             Neighbourhoods.ToList(),
                             InterestRateBase, admin, _m_,
-                            startBonus, depocounter);
+                            startBonus, depocounter, SSFR18);
                         Console.Write("Change file? ");
                         if (Console.ReadLine() == "yes")
                         {
@@ -454,6 +455,108 @@ namespace monoconta
                     {
                         Dice();
                     }
+                    else if (command == "stats")
+                    {
+
+                    }
+                    else if (command.StartsWith("ranking"))
+                    {
+                        ShowRanking(command.EndsWith("players"));
+                    }
+                    else if (command.StartsWith("sellshort"))
+                    {
+                        Console.WriteLine("Short seller ID: ");
+                        Entity shortSeller = ByID(Console.ReadLine());
+                        Console.WriteLine("Share lender ID: ");
+                        Entity shareLender = ByID(Console.ReadLine());
+                        Console.WriteLine("Shorted company ID: ");
+                        Company company = ByID(Console.ReadLine()) as Company;
+                        Console.WriteLine("Buyer of shares ID: ");
+                        Entity buyer = ByID(Console.ReadLine());
+
+                        Console.WriteLine("Share count: ");
+                        int shareNumber = int.Parse(Console.ReadLine());
+
+                        if (company.GetSharesOwnedBy(shortSeller, false) > 0)
+                            Console.WriteLine("Cannot short sell a stock you own.");
+                        else if (company.GetSharesOwnedBy(shareLender, true) < shareNumber)
+                            Console.WriteLine("Lender does not have enough shares.");
+                        else
+                        {
+                            if (!company.ShortSellingActivity.Keys.Any(pair => pair.Key == shareLender && pair.Value == shortSeller))
+                            {
+                                company.ShortSellingActivity.Add(new KeyValuePair<Entity, Entity>(shareLender, shortSeller), shareNumber);
+                            }
+                            else
+                            {
+                                company.ShortSellingActivity[new KeyValuePair<Entity, Entity>(shareLender, shortSeller)] += shareNumber;
+                                // KeyValuePair<T,T'>  este STRUCT !!!
+                            }
+                            // find buyer of said shares to sell to
+
+                            double sharePrice = company.ShareValue;
+                            if (buyer == company || shortSeller == company)
+                                continue;
+                            if (buyer is Company && (buyer as Company).GetSharesOwnedBy(company, true) > 0)
+                                continue;
+
+                            company.ShareholderStructure[shareLender] -= shareNumber;
+                            if (company.ShareholderStructure[shareLender] < 1 && (company is HedgeFund ? ((HedgeFund)company).Manager != shareLender : true))
+                                company.ShareholderStructure.Remove(shareLender);
+                            shortSeller.Money += shareNumber * sharePrice;
+                            if (company.ShareholderStructure.ContainsKey(buyer))
+                                company.ShareholderStructure[buyer] += shareNumber;
+                            else
+                                company.ShareholderStructure.Add(buyer, shareNumber);
+                            buyer.Money -= shareNumber * sharePrice;
+                        }
+                    }
+                    else if (command.StartsWith("covershort"))
+                    {
+                        Console.WriteLine("Short buyer ID: ");
+                        Entity shortBuyer = ByID(Console.ReadLine());
+                        Console.WriteLine("Share lender ID: ");
+                        Entity shareLender = ByID(Console.ReadLine());
+                        Console.WriteLine("Shorted company ID: ");
+                        Company company = ByID(Console.ReadLine()) as Company;
+                        Console.WriteLine("Seller of shares ID: ");
+                        Entity shareSeller = ByID(Console.ReadLine());
+
+                        Console.WriteLine("Share count: ");
+                        int shareNumber = int.Parse(Console.ReadLine());
+
+                        if (company.GetSharesShortedBy(shortBuyer) == 0)
+                            Console.WriteLine("Cannot buy to cover a stock you never shorted.");
+                        else if (company.GetSharesLent(shareLender, shortBuyer) < shareNumber)
+                            Console.WriteLine("Lender did not lend enough shares.");
+                        else
+                        {
+                            if (company.ShortSellingActivity.Keys.Any(pair => pair.Key == shareLender && pair.Value == shortBuyer))
+                            {
+                                var kvpair = new KeyValuePair<Entity, Entity>(shareLender, shortBuyer); // KeyValuePair<T,T'>  este STRUCT !!!
+                                company.ShortSellingActivity[kvpair] -= shareNumber;
+                                if (company.ShortSellingActivity[kvpair] < 1)
+                                    company.ShortSellingActivity.Remove(kvpair);
+                            }
+                            // find buyer of said shares to sell to
+
+                            double sharePrice = company.ShareValue;
+                            if (shortBuyer == company || shareLender == company || shareSeller == company || shareSeller == shortBuyer)
+                                continue;
+                            if (shareSeller is Company && (shareSeller as Company).GetSharesOwnedBy(company, true) > 0)
+                                continue;
+
+                            company.ShareholderStructure[shareSeller] -= shareNumber;
+                            if (company.ShareholderStructure[shareSeller] < 1 && (company is HedgeFund ? ((HedgeFund)company).Manager != shareSeller : true))
+                                company.ShareholderStructure.Remove(shareSeller);
+                            shareSeller.Money += shareNumber * sharePrice;
+                            if (company.ShareholderStructure.ContainsKey(shareLender))
+                                company.ShareholderStructure[shareLender] += shareNumber;
+                            else
+                                company.ShareholderStructure.Add(shareLender, shareNumber);
+                            shortBuyer.Money -= shareNumber * sharePrice;
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
@@ -461,6 +564,61 @@ namespace monoconta
                 }
             }
         }
+
+        private static void CalculateShortSellingInterest()
+        {
+            double baseRate = InterestRateBase;
+
+        }
+
+        private static void ShowRanking(bool playersOnly)
+        {
+            IEnumerable<Entity> collection = playersOnly ? Players : Entities;
+            Console.WriteLine("By net worth: ");
+            int i = 0;
+            foreach (var entity in collection.OrderByDescending(p=>p.NetWorth))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.NetWorth.ToString("C").PadLeft(25));
+            }
+
+            Console.WriteLine("\nBy total assets: ");
+            i = 0;
+            foreach (var entity in collection.OrderByDescending(p => p.TotalAssetValue + p.Money))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), (entity.TotalAssetValue+entity.Money).ToString("C").PadLeft(25));
+            }
+            Console.WriteLine("\nBy total liabilities: ");
+            i = 0;
+            foreach (var entity in collection.OrderByDescending(p => p.TotalLiabilitiesValue))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.TotalLiabilitiesValue.ToString("C").PadLeft(25));
+            }
+            Console.WriteLine("\nBy total cash: ");
+            i = 0;
+            foreach (var entity in collection.OrderByDescending(p => p.Money))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.Money.ToString("C").PadLeft(25));
+            }
+            Console.WriteLine("\nBy total credit extended: ");
+            i = 0;
+            foreach (var entity in collection.OrderByDescending(p=>p.CreditExtended))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.CreditExtended.ToString("C").PadLeft(25));
+            }
+            Console.WriteLine("\nBy real estate values: ");
+            i = 0;
+            foreach (var entity in collection.OrderByDescending(CalculateRealEstateValues))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), CalculateRealEstateValues(entity).ToString("C").PadLeft(25));
+            }
+        }
+
+        static double CalculateRealEstateValues(Entity arg)
+        {
+            double personal = arg.RealEstateAssetsValue;
+            return personal + 0; // todo
+        }
+
 
         private static void Dice()
         {
@@ -608,31 +766,60 @@ namespace monoconta
                 {
                     Console.Write("Show pegged entities status?");
                     bool showpegged = Console.ReadLine() == "yes";
-                    foreach (var ent in player.PeggedCompanies)
+                    foreach (var company in player.PeggedCompanies)
                     {
-                        ent.RegisterBook();
-                        ent.LiabilityTowardsBank *= ((InterestRateBase / ((player == admin && command.ToLower() == "passs") ? 2.25 : 2)) / 100 + 1);
-                        foreach (var creditor in ent.Liabilities.Keys.ToList())
+                        company.RegisterBook();
+                        company.LiabilityTowardsBank *= ((InterestRateBase / ((player == admin && command.ToLower() == "passs") ? 2.25 : 2)) / 100 + 1);
+                        foreach (var creditor in company.Liabilities.Keys.ToList())
                         {
-                            ent.Liabilities[creditor] *= ((InterestRateBase / 3) / 100 + 1);
+                            company.Liabilities[creditor] *= ((InterestRateBase / 3) / 100 + 1);
                         }
-                        foreach (var deposit in ent.Deposits.ToList())
+                        foreach (KeyValuePair<KeyValuePair<Entity, Entity>, double> shortSale in company.ShortSellingActivity)
+                        {
+                            Entity lender = shortSale.Key.Key;
+                            Entity shortSeller = shortSale.Key.Value;
+                            int sharesLent = (int)shortSale.Value;
+                            double totalSharesLentValue = sharesLent * company.ShareValue;
+                            double SHORT_SALE_INTEREST_RATE_FACTOR = (1.0 /*SSFR18*/ / 18.0) / 18 * (1.0 + 34.0 / 117); // SSFR18 / 18 * 151 / 117
+                            double interestRate = InterestRateBase * SHORT_SALE_INTEREST_RATE_FACTOR * SSFR18/100;
+                            double interestPayment = totalSharesLentValue * interestRate;
+                            if (interestPayment > shortSeller.Money)
+                            {
+                                double paid = shortSeller.Money >= 0 ? shortSeller.Money : 0;
+                                lender.Money += paid;
+                                shortSeller.Money = 0;
+                                double differencePlusInterplayerInterest = (interestPayment - paid) * (InterestRateBase / 300 + 1);
+                                if (shortSeller.Liabilities.ContainsKey(lender))
+                                {
+                                    shortSeller.Liabilities[lender] += differencePlusInterplayerInterest;
+                                }
+                                else
+                                    shortSeller.Liabilities.Add(lender, differencePlusInterplayerInterest);
+                            }
+                            else
+                            {
+                                lender.Money += interestPayment;
+                                shortSeller.Money -= interestPayment;
+                            }
+                            Console.WriteLine("{0} paid {1:C} short selling interest to {2} ({3})", shortSeller.Name, interestPayment, lender.Name, company.Name);
+                        }
+                        foreach (var deposit in company.Deposits.ToList())
                         {
                             if (!deposit.PassRound(player == admin && command.ToLower() == "passs"))
                             {
-                                ent.Money += deposit.Principal;
-                                ent.Money += deposit.TotalInterest;
+                                company.Money += deposit.Principal;
+                                company.Money += deposit.TotalInterest;
                                 if (showpegged)
                                 {
                                     Console.WriteLine("Deposit {0} reached term", deposit.DepositID);
                                     Console.WriteLine("Received principal of {0:C} and total accumulated interest of {1:C}", deposit.Principal, deposit.TotalInterest);
                                 }
-                                ent.Deposits.Remove(deposit);
+                                company.Deposits.Remove(deposit);
                             }
                         }
-                        ent.OnPassedStart();
+                        company.OnPassedStart();
                         if (showpegged)
-                            ent.PrintSituation(true);
+                            company.PrintSituation(true);
                     }
                 }
                 if (command.StartsWith("PASS"))

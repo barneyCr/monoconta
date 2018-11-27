@@ -8,6 +8,7 @@
     <RootNamespace>monoconta</RootNamespace>
     <AssemblyName>monoconta</AssemblyName>
     <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
+    <ReleaseVersion>0.2</ReleaseVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -48,6 +49,7 @@
     <Compile Include="ReadGameManager.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="DiceManager.cs" />
+    <Compile Include="ShortSellingStructure.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">

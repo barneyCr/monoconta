@@ -28,11 +28,12 @@ namespace monoconta
         private Player admin;
         private double _m, startbonus;
         private int depocounter;
+        private double SSRF18;
 
         internal void set(
             List<Player> players, List<Company> companies, List<HedgeFund> hedgeFunds,
             List<Property> properties, List<Neighbourhood> neighbourhoods, 
-            double irb, Player admin, double m, double bonus, int depocounter)
+            double irb, Player admin, double m, double bonus, int depocounter, double ssfr18)
         {
             this.Players = players;
             this.Companies = companies;
@@ -44,6 +45,7 @@ namespace monoconta
             this._m = m;
             this.startbonus = bonus;
             this.depocounter = depocounter;
+            this.SSRF18 = ssfr18;
         }
 
         private string gameName;
@@ -87,6 +89,7 @@ namespace monoconta
             xml.WriteElementString("m", _m.ToF3Double());
             xml.WriteElementString("startbonus", startbonus.ToF3Double());
             xml.WriteElementString("depocounter", depocounter.ToString());
+            xml.WriteElementString("shortsellratefactor18", SSRF18.ToF3Double());
             xml.WriteEndElement(); // config
         }
 
@@ -209,9 +212,19 @@ namespace monoconta
                 xml.WriteStartElement("shareholder");
                 xml.WriteAttributeString("id", shareholder.Key.ID.ToString());
                 xml.WriteElementString("fullname", shareholder.Key.Name);
-                xml.WriteElementString("shares", shareholder.Value.ToString());
-                xml.WriteElementString("pctg", string.Format("{0:F3}%", comp.GetOwnershipPctg(shareholder.Key)));
+                xml.WriteElementString("shares", comp.GetSharesOwnedBy(shareholder.Key,false).ToString());
+                xml.WriteElementString("pctg", string.Format("{0:F3}%", comp.GetOwnershipPctg(shareholder.Key, false)));
                 xml.WriteEndElement(); // shareholder
+            }
+            foreach (var shortSeller in comp.ShortSellingActivity)
+            {
+                xml.WriteStartElement("shortseller");
+                xml.WriteAttributeString("id", shortSeller.Key.Value.ID.ToString());
+                xml.WriteElementString("fullname", shortSeller.Key.Value.Name);
+                xml.WriteElementString("lender", shortSeller.Key.Key.ID.ToString());
+                xml.WriteElementString("shares", shortSeller.Value.ToString());
+                xml.WriteElementString("pctg", string.Format("{0:F3}%", comp.GetSharesShortedBy(shortSeller.Key.Value)/comp.ShareCount*100));
+                xml.WriteEndElement(); // shortseller
             }
 
             xml.WriteEndElement(); // shareholderstructure
