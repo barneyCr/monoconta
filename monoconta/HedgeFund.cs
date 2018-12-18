@@ -19,6 +19,7 @@ namespace monoconta
             this.Compensation = comp;
             this.PreviousShareValues = new Dictionary<int, double>(100);
             this.PreviousShareValues[0] = initialValue;
+            this.LastShareSplitRatio = 1; // super important
             this.ManagerVoteMultiplier = 30; // default
         }
 
@@ -55,10 +56,11 @@ namespace monoconta
         public override void OnPassedStart()
         {
             base.OnPassedStart();
-            var oldSharesDict = NewlySubscribedFunds.ToDictionary(pair => pair.Key, pair => (ShareholderStructure[pair.Key] - pair.Value));
+            var oldSharesDict = NewlySubscribedFunds.ToDictionary(
+                pair => pair.Key, pair => ShareholderStructure.ContainsKey(pair.Key) ? (ShareholderStructure[pair.Key] - pair.Value) : 0);
             double oldSharesCount = oldSharesDict.Sum(p => p.Value);
             double oldValue = PreviousShareValues[this.PassedStartCounter == 1 ? 0 : this.PassedStartCounter];
-            double newValue = this.ShareValue*this.LastShareSplitRatio;
+            double newValue = this.ShareValue*this.LastShareSplitRatio; // resetat ratio la final functie
             double profitAdded = newValue - oldValue;
             double gainAsQuota = profitAdded / oldValue;
             double transferableGainsQuota = this.Compensation.PerformanceFee / 100.0 * gainAsQuota;
@@ -81,7 +83,7 @@ namespace monoconta
             this.LastFeesPaid = totalSharesTransferred * ShareValue;
             Console.WriteLine("Fees amount to {0} shares, {1:C}, or {3:F2}%, hedge fund {2}", totalSharesTransferred, this.LastFeesPaid, this.Name, totalSharesTransferred * 100 / oldSharesCount);
             NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0);
-            this.LastShareSplitRatio = 1;
+            this.LastShareSplitRatio = 1; // daca nu, split-ul ramane si pe urm tura
         }
 
         public override void BuyBackShares(Entity holder, int shares, double premiumPctg)

@@ -14,5 +14,9 @@ namespace monoconta
         {
             return d.ToString("F3");
         }
+        public static string ToPaddedLeftCashString(this double s, int pad)
+        {
+            return s.ToString("C").PadLeft(pad);
+        }
     }
 }

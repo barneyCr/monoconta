@@ -168,7 +168,7 @@ namespace monoconta
                 Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
             }
 
-            Console.WriteLine("Deposits: ");
+            Console.WriteLine("Deposits:\t\t[{0:C}]", this.Deposits.Sum(dep=>dep.CurrentCapitalBase));
             foreach (var deposit in this.Deposits)
             {
                 Console.WriteLine("\tPrincipal = {0:C}, InterestAcc = {1:C}, Period: {2}/{3}\t[{4}]", deposit.Principal, deposit.TotalInterest, deposit.RoundsPassed, deposit.TotalRounds, deposit.DepositID);

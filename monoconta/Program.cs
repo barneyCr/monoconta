@@ -160,6 +160,7 @@ namespace monoconta
                     {
                         Console.WriteLine("{0:F3}% - interest rate for interplayer loans", InterestRateBase / 3);
                         Console.WriteLine("{0:F3}% - interest rate for bank loans", InterestRateBase / 2);
+                        Console.WriteLine("{0:F3}% - interest rate for short selling", InterestRateBase * MainClass.SSFR18 / 324 * 151 / 117);
                         int infmax = ReadInt("Interest rates on X rounds: X = ");
                         for (int i = 1; i <= infmax; i++)
                         {
@@ -288,11 +289,14 @@ namespace monoconta
                         Console.WriteLine("Market Cap: {0:C}\nValue/share: {1:C}\nTotal shares: {2}", company.ShareCount * company.ShareValue, company.ShareValue, company.ShareCount);
 
                         double ratio = ReadDouble("\nSplit Multiplier: ");
+                        if (ratio == 0)
+                            continue;
 #pragma warning disable RECS0018 // Comparison of floating point numbers with equality operator
                         if (((double)company.ShareCount) * ratio == (int)(company.ShareCount * ratio))
 #pragma warning restore RECS0018 // Comparison of floating point numbers with equality operator
                         {
                             company.ShareholderStructure = company.ShareholderStructure.ToDictionary(pair => pair.Key, pair => (int)(pair.Value * ratio));
+                            company.ShortSellingActivity = company.ShortSellingActivity.ToDictionary(pair => pair.Key, pair => (double)(pair.Value * ratio));
                             if (company is HedgeFund)
                             {
                                 (company as HedgeFund).LastShareSplitRatio = ratio;
@@ -457,7 +461,7 @@ namespace monoconta
                     }
                     else if (command == "stats")
                     {
-
+                        ShowStats();
                     }
                     else if (command.StartsWith("ranking"))
                     {
@@ -465,97 +469,11 @@ namespace monoconta
                     }
                     else if (command.StartsWith("sellshort"))
                     {
-                        Console.WriteLine("Short seller ID: ");
-                        Entity shortSeller = ByID(Console.ReadLine());
-                        Console.WriteLine("Share lender ID: ");
-                        Entity shareLender = ByID(Console.ReadLine());
-                        Console.WriteLine("Shorted company ID: ");
-                        Company company = ByID(Console.ReadLine()) as Company;
-                        Console.WriteLine("Buyer of shares ID: ");
-                        Entity buyer = ByID(Console.ReadLine());
-
-                        Console.WriteLine("Share count: ");
-                        int shareNumber = int.Parse(Console.ReadLine());
-
-                        if (company.GetSharesOwnedBy(shortSeller, false) > 0)
-                            Console.WriteLine("Cannot short sell a stock you own.");
-                        else if (company.GetSharesOwnedBy(shareLender, true) < shareNumber)
-                            Console.WriteLine("Lender does not have enough shares.");
-                        else
-                        {
-                            if (!company.ShortSellingActivity.Keys.Any(pair => pair.Key == shareLender && pair.Value == shortSeller))
-                            {
-                                company.ShortSellingActivity.Add(new KeyValuePair<Entity, Entity>(shareLender, shortSeller), shareNumber);
-                            }
-                            else
-                            {
-                                company.ShortSellingActivity[new KeyValuePair<Entity, Entity>(shareLender, shortSeller)] += shareNumber;
-                                // KeyValuePair<T,T'>  este STRUCT !!!
-                            }
-                            // find buyer of said shares to sell to
-
-                            double sharePrice = company.ShareValue;
-                            if (buyer == company || shortSeller == company)
-                                continue;
-                            if (buyer is Company && (buyer as Company).GetSharesOwnedBy(company, true) > 0)
-                                continue;
-
-                            company.ShareholderStructure[shareLender] -= shareNumber;
-                            if (company.ShareholderStructure[shareLender] < 1 && (company is HedgeFund ? ((HedgeFund)company).Manager != shareLender : true))
-                                company.ShareholderStructure.Remove(shareLender);
-                            shortSeller.Money += shareNumber * sharePrice;
-                            if (company.ShareholderStructure.ContainsKey(buyer))
-                                company.ShareholderStructure[buyer] += shareNumber;
-                            else
-                                company.ShareholderStructure.Add(buyer, shareNumber);
-                            buyer.Money -= shareNumber * sharePrice;
-                        }
+                        SellShort();
                     }
                     else if (command.StartsWith("covershort"))
                     {
-                        Console.WriteLine("Short buyer ID: ");
-                        Entity shortBuyer = ByID(Console.ReadLine());
-                        Console.WriteLine("Share lender ID: ");
-                        Entity shareLender = ByID(Console.ReadLine());
-                        Console.WriteLine("Shorted company ID: ");
-                        Company company = ByID(Console.ReadLine()) as Company;
-                        Console.WriteLine("Seller of shares ID: ");
-                        Entity shareSeller = ByID(Console.ReadLine());
-
-                        Console.WriteLine("Share count: ");
-                        int shareNumber = int.Parse(Console.ReadLine());
-
-                        if (company.GetSharesShortedBy(shortBuyer) == 0)
-                            Console.WriteLine("Cannot buy to cover a stock you never shorted.");
-                        else if (company.GetSharesLent(shareLender, shortBuyer) < shareNumber)
-                            Console.WriteLine("Lender did not lend enough shares.");
-                        else
-                        {
-                            if (company.ShortSellingActivity.Keys.Any(pair => pair.Key == shareLender && pair.Value == shortBuyer))
-                            {
-                                var kvpair = new KeyValuePair<Entity, Entity>(shareLender, shortBuyer); // KeyValuePair<T,T'>  este STRUCT !!!
-                                company.ShortSellingActivity[kvpair] -= shareNumber;
-                                if (company.ShortSellingActivity[kvpair] < 1)
-                                    company.ShortSellingActivity.Remove(kvpair);
-                            }
-                            // find buyer of said shares to sell to
-
-                            double sharePrice = company.ShareValue;
-                            if (shortBuyer == company || shareLender == company || shareSeller == company || shareSeller == shortBuyer)
-                                continue;
-                            if (shareSeller is Company && (shareSeller as Company).GetSharesOwnedBy(company, true) > 0)
-                                continue;
-
-                            company.ShareholderStructure[shareSeller] -= shareNumber;
-                            if (company.ShareholderStructure[shareSeller] < 1 && (company is HedgeFund ? ((HedgeFund)company).Manager != shareSeller : true))
-                                company.ShareholderStructure.Remove(shareSeller);
-                            shareSeller.Money += shareNumber * sharePrice;
-                            if (company.ShareholderStructure.ContainsKey(shareLender))
-                                company.ShareholderStructure[shareLender] += shareNumber;
-                            else
-                                company.ShareholderStructure.Add(shareLender, shareNumber);
-                            shortBuyer.Money -= shareNumber * sharePrice;
-                        }
+                        CoverShort();
                     }
                 }
                 catch (Exception e)
@@ -565,7 +483,123 @@ namespace monoconta
             }
         }
 
-        private static void CalculateShortSellingInterest()
+        static void ShowStats()
+        {
+            void write(string s1, double d2)
+            {
+                Console.Write(s1.PadRight(30)); Console.WriteLine(d2.ToPaddedLeftCashString(45));
+            }
+            double sum(Func<Entity, double> x)
+            {
+                return MainClass.Entities.Sum(x);
+            }
+
+            write("Total assets:", sum(ent => ent.TotalAssetValue + ent.Money));
+            write("Total illiquid assets:", sum(ent => ent.TotalAssetValue));
+            write("Total liquidities:", sum(ent => ent.Money));
+            write("Total liabilities:", sum(ent => ent.TotalLiabilitiesValue));
+            write("Total bank debt:", sum(ent => ent.LiabilityTowardsBank));
+            write("Total real money:", sum(ent => ent.NetWorth));
+            write("Total real estate value:", sum(ent => ent.RealEstateAssetsValue));
+        }
+
+        static void SellShort()
+        {
+            Console.WriteLine("Short seller ID: ");
+            Entity shortSeller = ByID(Console.ReadLine());
+            Console.WriteLine("Share lender ID: ");
+            Entity shareLender = ByID(Console.ReadLine());
+            Console.WriteLine("Shorted company ID: ");
+            Company company = ByID(Console.ReadLine()) as Company;
+            Console.WriteLine("Buyer of shares ID: ");
+            Entity buyer = ByID(Console.ReadLine());
+
+            Console.WriteLine("Share count: ");
+            int shareNumber = int.Parse(Console.ReadLine());
+
+            if (company.GetSharesOwnedBy(shortSeller, false) > 0)
+                Console.WriteLine("Cannot short sell a stock you own.");
+            else if (company.GetSharesOwnedBy(shareLender, true) < shareNumber)
+                Console.WriteLine("Lender does not have enough shares.");
+            else
+            {
+                if (!company.ShortSellingActivity.Keys.Any(pair => pair.Key == shareLender && pair.Value == shortSeller))
+                {
+                    company.ShortSellingActivity.Add(new KeyValuePair<Entity, Entity>(shareLender, shortSeller), shareNumber);
+                }
+                else
+                {
+                    company.ShortSellingActivity[new KeyValuePair<Entity, Entity>(shareLender, shortSeller)] += shareNumber;
+                    // KeyValuePair<T,T'>  este STRUCT !!!
+                }
+                // find buyer of said shares to sell to
+
+                double sharePrice = company.ShareValue;
+                if (buyer == company || shortSeller == company)
+                    return;
+                if (buyer is Company && (buyer as Company).GetSharesOwnedBy(company, true) > 0)
+                    return;
+
+                company.ShareholderStructure[shareLender] -= shareNumber;
+                if (company.ShareholderStructure[shareLender] < 1 && (company is HedgeFund ? ((HedgeFund)company).Manager != shareLender : true))
+                    company.ShareholderStructure.Remove(shareLender);
+                shortSeller.Money += shareNumber * sharePrice;
+                if (company.ShareholderStructure.ContainsKey(buyer))
+                    company.ShareholderStructure[buyer] += shareNumber;
+                else
+                    company.ShareholderStructure.Add(buyer, shareNumber);
+                buyer.Money -= shareNumber * sharePrice;
+            }
+        }
+        static void CoverShort()
+        {
+            Console.WriteLine("Short buyer ID: ");
+            Entity shortBuyer = ByID(Console.ReadLine());
+            Console.WriteLine("Share lender ID: ");
+            Entity shareLender = ByID(Console.ReadLine());
+            Console.WriteLine("Shorted company ID: ");
+            Company company = ByID(Console.ReadLine()) as Company;
+            Console.WriteLine("Seller of shares ID: ");
+            Entity shareSeller = ByID(Console.ReadLine());
+
+            Console.WriteLine("Share count: ");
+            int shareNumber = int.Parse(Console.ReadLine());
+
+            if (company.GetSharesShortedBy(shortBuyer) == 0)
+                Console.WriteLine("Cannot buy to cover a stock you never shorted.");
+            else if (company.GetSharesLent(shareLender, shortBuyer) < shareNumber)
+                Console.WriteLine("Lender did not lend enough shares.");
+            else
+            {
+                if (company.ShortSellingActivity.Keys.Any(pair => pair.Key == shareLender && pair.Value == shortBuyer))
+                {
+                    var kvpair = new KeyValuePair<Entity, Entity>(shareLender, shortBuyer); // KeyValuePair<T,T'>  este STRUCT !!!
+                    company.ShortSellingActivity[kvpair] -= shareNumber;
+                    if (company.ShortSellingActivity[kvpair] < 1)
+                        company.ShortSellingActivity.Remove(kvpair);
+                }
+                // find buyer of said shares to sell to
+
+                double sharePrice = company.ShareValue;
+                if (shortBuyer == company || shareLender == company || shareSeller == company || shareSeller == shortBuyer)
+                    return;
+                if (shareSeller is Company && (shareSeller as Company).GetSharesOwnedBy(company, true) > 0)
+                    return;
+
+                company.ShareholderStructure[shareSeller] -= shareNumber;
+                if (company.ShareholderStructure[shareSeller] < 1 && (company is HedgeFund ? ((HedgeFund)company).Manager != shareSeller : true))
+                    company.ShareholderStructure.Remove(shareSeller);
+                shareSeller.Money += shareNumber * sharePrice;
+                if (company.ShareholderStructure.ContainsKey(shareLender))
+                    company.ShareholderStructure[shareLender] += shareNumber;
+                else
+                    company.ShareholderStructure.Add(shareLender, shareNumber);
+                shortBuyer.Money -= shareNumber * sharePrice;
+            }
+        }
+
+
+private static void CalculateShortSellingInterest()
         {
             double baseRate = InterestRateBase;
 
@@ -1117,7 +1151,8 @@ namespace monoconta
 
         private static void SetVoteMultiplier()
         {
-            (ByID(ReadInt("Hedge fund ID: ")) as HedgeFund).ManagerVoteMultiplier = ReadDouble("Value: ");
+            if (ByID(ReadInt("Hedge fund ID: ")) is HedgeFund fund)
+                fund.ManagerVoteMultiplier = ReadDouble("Value: ");
         }
 
         private static void CreateDeposit()

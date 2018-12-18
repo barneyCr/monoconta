@@ -62,7 +62,7 @@ namespace monoconta
                 Company.ID_COUNTER_BASE = GetAllEntities().Max(e => e.ID);
             }
             catch (Exception) {
-                throw new Exception("No entities...");
+ throw new Exception("No entities...");
             }
         }
 
