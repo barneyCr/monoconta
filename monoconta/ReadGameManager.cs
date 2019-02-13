@@ -132,7 +132,10 @@ namespace monoconta
             this._m = config.Element("m").Value.ToDouble();
             this.startbonus = config.Element("startbonus").Value.ToDouble();
             this.depocounter = config.Element("depocounter").Value.ToInt();
-            this.SSFR18 = config.Element("shortsellratefactor18").Value.ToDouble();
+            if (config.Elements().Any(e=>e.Name=="shortsellratefactor18"))
+                this.SSFR18 = config.Element("shortsellratefactor18").Value.ToDouble();
+            else
+                this.SSFR18 = 19.4;
             Console.WriteLine("\tConfig loaded");
         }
 

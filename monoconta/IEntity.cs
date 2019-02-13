@@ -64,9 +64,27 @@ namespace monoconta
 		{
 			get
 			{
-				return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value);
+                return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value)+ShortedSharesValue;
 			}
 		}
+
+        public IEnumerable<ShortSellingStructure> ShortedShareStructures {
+            get
+            {
+                return MainClass.Entities.OfType<Company>().SelectMany(c => c.GetShortSellers().Where(structure => structure.ShortSeller == this));
+            }
+        }
+        /// <summary>
+        /// Positive value!
+        /// </summary>
+        /// <value>The shorted shares value.</value>
+        public double ShortedSharesValue
+        {
+            get
+            {
+                return ShortedShareStructures.Sum(act => act.ShareCount * act.ShortedCompany.ShareValue);
+            }
+        }
 
         /// <summary>
         /// Includes properties and options.
@@ -107,14 +125,38 @@ namespace monoconta
 			//...
 		}
 
-		public virtual void OnPassedStart() {
-			this.PassedStartCounter++;         
-		}
+        public virtual void OnPassedStart()
+        {
+            this.PassedStartCounter++;
+            var interestRateSwaps = MainClass.InterestRateSwapContracts.Where(swap => swap.ShortParty == this);
+            foreach (var swap in interestRateSwaps)
+            {
+                swap.Call();
+            }
+            List<RentSwap> toRemove = new List<RentSwap>();
+            foreach (var rentSwap in MainClass.RentSwapContracts.Where(swap => swap.ShortParty == this))
+            {
+                if (!rentSwap.PassedStartEvent())
+                {
+                    Console.WriteLine("Contract {0} is being terminated", rentSwap.Name);
+                    rentSwap.DescribeSpecific();
+                    toRemove.Add(rentSwap);
+                }
+            }
+            MainClass.RentSwapContracts.RemoveAll(rsw=>toRemove.Contains(rsw));
+        }
 
-		public virtual void RegisterBook() {
+        public virtual void RegisterBook() {
 			
 		}
 
+        public double GetDirectLiabilitiesInterest()
+        {
+            double totalLiab = TotalLiabilitiesValue;
+            double mainRate = MainClass.InterestRateBase;
+            double cost = LiabilityTowardsBank * mainRate / 200 + Liabilities.Sum(p => p.Value) * mainRate / 300 + ShortedSharesValue * MainClass.SSFR18 / 324 * 151 / 117 * mainRate / 100;
+            return cost / totalLiab * 100;
+         }
 
         public static bool OrderPropertiesByID { get; set; }
 
@@ -216,7 +258,7 @@ namespace monoconta
                 }
             }
             Console.WriteLine("Shorted shares: ");
-            foreach (ShortSellingStructure shortAct in MainClass.Entities.OfType<Company>().SelectMany(c => c.GetShortSellers().Where(structure => structure.ShortSeller == this)))
+            foreach (ShortSellingStructure shortAct in this.ShortedShareStructures)
             {
                 double sharesShorted = shortAct.ShareCount;
                 double sharePrice = shortAct.ShortedCompany.ShareValue;

@@ -89,7 +89,7 @@ namespace monoconta
             xml.WriteElementString("m", _m.ToF3Double());
             xml.WriteElementString("startbonus", startbonus.ToF3Double());
             xml.WriteElementString("depocounter", depocounter.ToString());
-            xml.WriteElementString("shortsellratefactor18", SSRF18.ToF3Double());
+            xml.WriteElementString("shortsellratefactor18", SSRF18 == 0 ? 19.4.ToF3Double() : SSRF18.ToF3Double());
             xml.WriteEndElement(); // config
         }
 

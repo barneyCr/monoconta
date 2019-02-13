@@ -43,13 +43,19 @@
     <Compile Include="IEntity.cs" />
     <Compile Include="HedgeFund.cs" />
     <Compile Include="Property.cs" />
-    <Compile Include="PropertyReader.cs" />
+    <Compile Include="ProgramPropertyReader.cs" />
     <Compile Include="ShareOwnershipConflictException.cs" />
     <Compile Include="SaveGameManager.cs" />
     <Compile Include="ReadGameManager.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="DiceManager.cs" />
     <Compile Include="ShortSellingStructure.cs" />
+    <Compile Include="Contract.cs" />
+    <Compile Include="ProgramRun.cs" />
+    <Compile Include="ProgramCommands.cs" />
+    <Compile Include="InterestRateSwap.cs" />
+    <Compile Include="RentSwap.cs" />
+    <Compile Include="IDescribable.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">

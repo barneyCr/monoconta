@@ -25,8 +25,9 @@ namespace monoconta
                     Neighbourhood neighbourhood = new Neighbourhood()
                     {
                         Name = neighbourhoodElement.Attribute("name").Value,
-                        NID = int.Parse(neighbourhoodElement.Attribute("nid").Value),
-                        Spaces = int.Parse(neighbourhoodElement.Attribute("spaces").Value)
+                        NID = int.Parse(neighbourhoodElement.Attribute("nid").Value),      
+
+                    Spaces = int.Parse(neighbourhoodElement.Attribute("spaces").Value)
                     };
                     neighbourhoods.Add(neighbourhood);
                 }
