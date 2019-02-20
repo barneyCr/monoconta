@@ -306,7 +306,8 @@ namespace monoconta
                     else if (command == "authorize")
                     {
                         Property property = ReadProperty();
-                        property._authorized = true;
+                        Console.WriteLine((property._authorized = !property._authorized) ? "given" : "taken");
+
                     }
                     else if (command == "viewprop")
                     {
@@ -337,11 +338,7 @@ namespace monoconta
                     }
                     else if (command == "setpropflow")
                     {
-                        Property property = ReadProperty();
-                        double rentflow = ReadDouble("Rent flow in: ");
-                        double consflow = ReadDouble("Cost flow out: ");
-                        property.SetRentFlowCounter(rentflow);
-                        property.SetConstructionCostCounter(consflow);
+                        SetPropFlow();
                     }
                     else if (command == "orderpropsby")
                     {
@@ -353,8 +350,7 @@ namespace monoconta
                             case "neighbourhood":
                             case "color":
                             case "type":
-                                Entity.OrderPropertiesByID = false;
-                                break;
+                                Entity.OrderPropertiesByID = false; break;
                             default:
                                 Entity.OrderPropertiesByID = true; break;
                         }
@@ -374,6 +370,7 @@ namespace monoconta
                             Players.ToList(), Companies.ToList(),
                             HedgeFunds.ToList(), Properties.ToList(),
                             Neighbourhoods.ToList(),
+                            RentSwapContracts.ToList(),
                             InterestRateBase, admin, _m_,
                             startBonus, depocounter, SSFR18);
                         Console.Write("Change file? ");
@@ -393,6 +390,10 @@ namespace monoconta
                     else if (command == "stats")
                     {
                         ShowStats();
+                    }
+                    else if (command == "wealth")
+                    {
+                        ShowWealth();
                     }
                     else if (command.StartsWith("ranking"))
                     {
@@ -417,6 +418,7 @@ namespace monoconta
                 }
             }
         }
+
 
     }
 }

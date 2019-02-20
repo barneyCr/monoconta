@@ -54,7 +54,7 @@
     <Compile Include="ProgramRun.cs" />
     <Compile Include="ProgramCommands.cs" />
     <Compile Include="InterestRateSwap.cs" />
-    <Compile Include="RentSwap.cs" />
+    <Compile Include="RentSwapContract.cs" />
     <Compile Include="IDescribable.cs" />
   </ItemGroup>
   <ItemGroup>

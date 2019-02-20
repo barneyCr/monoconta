@@ -23,6 +23,8 @@ namespace monoconta
         private List<HedgeFund> HedgeFunds;
         private List<Property> Properties;
         private List<Neighbourhood> Neighbourhoods;
+        private List<InterestRateSwap> InterestRateSwaps;
+        private List<RentSwapContract> RentSwaps;
 
         private double IRB;
         private Player admin;
@@ -32,7 +34,7 @@ namespace monoconta
 
         internal void set(
             List<Player> players, List<Company> companies, List<HedgeFund> hedgeFunds,
-            List<Property> properties, List<Neighbourhood> neighbourhoods, 
+            List<Property> properties, List<Neighbourhood> neighbourhoods, List<RentSwapContract> rentSwaps,
             double irb, Player admin, double m, double bonus, int depocounter, double ssfr18)
         {
             this.Players = players;
@@ -40,6 +42,8 @@ namespace monoconta
             this.HedgeFunds = hedgeFunds;
             this.Properties = properties;
             this.Neighbourhoods = neighbourhoods;
+            //this.InterestRateSwaps = interestRateSwaps;
+            this.RentSwaps = rentSwaps;
             this.IRB = irb;
             this.admin = admin;
             this._m = m;
@@ -74,6 +78,7 @@ namespace monoconta
                 WriteConfig(xml);
                 WriteAllEntities(xml);
                 WriteProperties(xml);
+                WriteContracts(xml);
 
                 xml.WriteEndElement(); // game
                 xml.WriteEndDocument();
@@ -264,6 +269,69 @@ namespace monoconta
                 xml.WriteEndElement();
             }
             xml.WriteEndElement(); // liabilities
+        }
+
+        private void WriteContracts(XmlWriter xml)
+        {
+            xml.WriteStartElement("contracts");
+
+            xml.WriteStartElement("rentswaps");
+            foreach (var swap in this.RentSwaps)
+            {
+                xml.WriteStartElement("rentswap");
+                xml.WriteAttributeString("id", swap.ID.ToString());
+                {
+                    xml.WriteElementString("name", swap.Name);
+                    {
+                        xml.WriteStartElement("longparty");
+                        xml.WriteAttributeString("id", swap.LongParty.ID.ToString());
+                        xml.WriteAttributeString("name", swap.LongParty.Name);
+                        xml.WriteEndElement(); // longparty
+                    }
+                    {
+                        xml.WriteStartElement("shortparty");
+                        xml.WriteAttributeString("id", swap.ShortParty.ID.ToString());
+                        xml.WriteAttributeString("name", swap.ShortParty.Name);
+                        xml.WriteEndElement(); // shortparty
+                    }
+                    xml.WriteElementString("propID", swap.PropertyID.ToString());
+                    xml.WriteElementString("fixedRent", swap.Terms.Sum.ToF3Double());
+                    xml.WriteElementString("roundrentmulti", swap.RoundRentMultiplier.ToF3Double());
+                    xml.WriteElementString("roundspassed", swap.RoundsPassed.ToString());
+                    xml.WriteElementString("totalrounds", swap.Terms.Rounds.ToString());
+                    xml.WriteStartElement("entries");
+                    {
+                        foreach (var entry in swap.ContractEntries)
+                        {
+                            xml.WriteStartElement("entry");
+                            xml.WriteAttributeString("no", entry.Key.ToString());
+                            xml.WriteElementString("fixed", entry.Value.ObjectTransferred.ToF3Double());
+                            xml.WriteElementString("var", entry.Value.ContractElement.ToF3Double());
+                            xml.WriteElementString("msg", entry.Value.Message);
+                            xml.WriteEndElement();//entry
+                        }
+                    }
+                    xml.WriteEndElement();//entries
+                }
+                xml.WriteEndElement(); // rentswap
+            }
+            xml.WriteEndElement(); // rentswaps
+
+            xml.WriteStartElement("irswaps");
+            //foreach (var swap in this.InterestRateSwaps)
+            //{
+            //    xml.WriteStartElement("irswap");
+            //    xml.WriteAttributeString("id", swap.ID.ToString());
+            //    {
+            //        //this.WriteBasicEntityProperties(xml, swap);
+            //        //this.WriteBasicCompanyProperties(xml, swap);
+            //    }
+            //    xml.WriteEndElement();//irswap
+            //}
+            xml.WriteEndElement(); // irswaps
+
+            xml.WriteEndElement(); // contracts
+
         }
     }
 }

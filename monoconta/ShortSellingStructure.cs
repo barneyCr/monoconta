@@ -3,11 +3,11 @@ namespace monoconta
 {
     public class ShortSellingStructure
     {
-        internal ShortSellingStructure(Entity seller, Company shorted, double c)
+        internal ShortSellingStructure(Entity shortSeller, Company shortedCompany, double shareCount)
         {
-            this.ShortSeller = seller;
-            this.ShortedCompany = shorted;
-            this.ShareCount = c;
+            this.ShortSeller = shortSeller;
+            this.ShortedCompany = shortedCompany;
+            this.ShareCount = shareCount;
         }
 
         internal Entity ShortSeller;

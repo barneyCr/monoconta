@@ -31,6 +31,7 @@ namespace monoconta
         private List<HedgeFund> HedgeFunds = new List<HedgeFund>();
         private List<Property> Properties = new List<Property>();
         //private List<Neighbourhood> Neighbourhoods = new List<Neighbourhood>();
+        private List<RentSwapContract> RentSwapContracts = new List<RentSwapContract>();
 
         private string gameName;
         private double IRB;
@@ -42,6 +43,7 @@ namespace monoconta
         internal void Integrate(
             out List<Player> players, out List<Company> companies,
             out List<HedgeFund> hedgeFunds,
+            out List<RentSwapContract> rentSwapContracts,
             out Player admin, out string name,
             out double irb, out double m,
             out double startBonus, out int depoCounter, out double ssfr18
@@ -50,6 +52,7 @@ namespace monoconta
             players = this.Players;
             companies = this.Companies;
             hedgeFunds = this.HedgeFunds;
+            rentSwapContracts = this.RentSwapContracts;
             admin = this.admin;
             name = this.gameName;
             irb = this.IRB;
@@ -109,8 +112,9 @@ namespace monoconta
                     Console.WriteLine("Loading game {0}...", gameName);
 
                     ReadConfig(game);
-                    ReadEntities(game.Element("entities"));
+                    ReadEntities(game.Element("entities")); // after this there are no missing links!!!
                     ReadProperties(game.Element("properties"), propertiesTemplate);
+                    ReadContracts(game.Element("contracts"));
                     watch.Stop();
                     Console.WriteLine("Completed in {0:F2} ms!", watch.Elapsed.TotalMilliseconds);
                 }
@@ -120,7 +124,6 @@ namespace monoconta
                 Console.WriteLine(e.Message);
             }
         }
-
 
         private void ReadConfig(XElement game)
         {
@@ -146,7 +149,6 @@ namespace monoconta
             ReadHedgeFunds(entitiesElement.Element("firms").Element("hedgefunds"));
             ResolveMissingLinks();
         }
-
 
         private void ReadProperties(XElement propertiesElement, List<Property> propertiesTemplate)
         {
@@ -183,6 +185,50 @@ namespace monoconta
                     }
                 }
             }
+        }
+
+        private void ReadContracts(XElement xElement)
+        {
+            this.RentSwapContracts = new List<RentSwapContract>();
+            foreach (var rentSwapElement in xElement.Element("rentswaps").Elements("rentswap"))
+            {
+                Func<string, string> read = str => readerFunc(rentSwapElement, str);
+                //Action<Func<string,string>, string> changeElem = (func, el) => read = (str) => readerFunc(rentSwapElement.Element(el), str);
+                int swapID = rentSwapElement.Attribute("id").Value.ToInt();
+                string name = read("name");
+                int propID = read("propID").ToInt();
+                double fixedRent = read("fixedRent").ToDouble();
+                double roundrentmulti = read("roundrentmulti").ToDouble();
+                int roundspassed = read("roundspassed").ToInt();
+                int totalrounds = read("totalrounds").ToInt();
+
+                int longPartyID = rentSwapElement.Element("longparty").Attribute("id").Value.ToInt();
+                int shortPartyID = rentSwapElement.Element("shortparty").Attribute("id").Value.ToInt();
+
+                Dictionary<int, ContractRecord> entries = new Dictionary<int, ContractRecord>();
+                foreach (var entryElem in rentSwapElement.Element("entries").Elements("entry"))
+                {
+                    read = str => readerFunc(entryElem, str);
+                    int entryNo = entryElem.Attribute("no").Value.ToInt();
+                    double fixedRentPaid = read("fixed").ToDouble();
+                    double varRentPaid = read("var").ToDouble();
+                    string msg = read("msg");
+                    ContractRecord record = new ContractRecord(fixedRentPaid, varRentPaid, msg);
+                    entries.Add(entryNo, record);
+                }
+
+                Entity longParty = GetAllEntities().FirstOrDefault(e => e.ID == longPartyID);
+                Entity shortParty = GetAllEntities().FirstOrDefault(e => e.ID == shortPartyID);
+
+                RentSwapContract contract = new RentSwapContract(
+                    name, longParty, shortParty, propID, fixedRent, roundrentmulti, totalrounds
+                );
+                contract.ID = swapID;
+                contract.RoundsPassed = roundspassed;
+                contract.ContractEntries = entries;
+                this.RentSwapContracts.Add(contract);
+            }
+            Console.WriteLine("\tContracts loaded");
         }
 
         private void ResolveMissingLinks()

@@ -32,7 +32,7 @@ namespace monoconta
         public static List<Neighbourhood> Neighbourhoods;
 
         public static List<InterestRateSwap> InterestRateSwapContracts;
-        public static List<RentSwap> RentSwapContracts;
+        public static List<RentSwapContract> RentSwapContracts;
 
         public static double InterestRateBase = 1;
         public static string GameName = "";
@@ -72,7 +72,7 @@ namespace monoconta
 
                 ReadGameManager readManager = new ReadGameManager(fileName, Console.ReadLine() == "yes");
                 readManager.Read(Properties);
-                readManager.Integrate(out Players, out Companies, out HedgeFunds, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
+                readManager.Integrate(out Players, out Companies, out HedgeFunds, out RentSwapContracts, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
                 SGManager = new SaveGameManager(GameName, fileName);
             }
             else
@@ -90,10 +90,11 @@ namespace monoconta
                 Companies = new List<Company>();
                 HedgeFunds = new List<HedgeFund>();
 
+                RentSwapContracts = new List<RentSwapContract>();
+
                 Console.WriteLine("Done!\n\n");
             }
             InterestRateSwapContracts = new List<InterestRateSwap>();
-            RentSwapContracts = new List<RentSwap>();
             DiceManager = new DiceManager();
             watch.Stop();
         }

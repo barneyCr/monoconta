@@ -176,6 +176,49 @@ namespace monoconta
                 Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), CalculateRealEstateValues(entity).ToString("C").PadLeft(25));
             }
         }
+
+        private static void ShowWealth()
+        {
+            Entity entity = ByID(ReadInt("Entity ID: "));
+            double netWorth = entity.NetWorth;
+
+            double cash = entity.Money;
+            double sharesInOtherCompaniesValue = entity.SharesInOtherCompaniesValue;
+            double reValue = entity.RealEstateAssetsValue;
+            double sharesLentValue = entity.ShortedSharesLentValue;
+            double cashMoneyLentValue = entity.CashLoansMadeValue;
+            double depositsValue = entity.DepositsValue;
+
+            double sharesBorrowedValue = entity.ShortedSharesValue;
+            double bankDebt = entity.LiabilityTowardsBank;
+            double cashMoneyDebt = entity.Liabilities.Sum(pair => pair.Value);
+
+            double assets = entity.TotalAssetValue+cash;
+            double liabilities = entity.TotalLiabilitiesValue;
+
+            //netWorth *= 100;
+
+            const int categoryPad = 25, valuePad = 40, percentagePad = 12;
+
+            Console.WriteLine("\n\n");
+            Console.WriteLine("Cash: ".PadRight(categoryPad) + string.Format("{0:C}", cash).PadLeft(valuePad) + (string.Format("{0:P2}", cash/netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Deposits: ".PadRight(categoryPad) + string.Format("{0:C}", depositsValue).PadLeft(valuePad) + (string.Format("{0:P2}", depositsValue / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Long shares: ".PadRight(categoryPad) + string.Format("{0:C}", sharesInOtherCompaniesValue).PadLeft(valuePad) + (string.Format("{0:P2}", sharesInOtherCompaniesValue / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Shares lent: ".PadRight(categoryPad) + string.Format("{0:C}", sharesLentValue).PadLeft(valuePad) + (string.Format("{0:P2}", sharesLentValue / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Real estate assets: ".PadRight(categoryPad) + string.Format("{0:C}", reValue).PadLeft(valuePad) + (string.Format("{0:P2}", reValue / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Loans made: ".PadRight(categoryPad) + string.Format("{0:C}", cashMoneyLentValue).PadLeft(valuePad) + (string.Format("{0:P2}", cashMoneyLentValue / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine();
+
+            Console.WriteLine("Shorted shares: ".PadRight(categoryPad) + string.Format("{0:C}", sharesBorrowedValue).PadLeft(valuePad) + (string.Format("{0:P2}", sharesBorrowedValue / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Debt to bank: ".PadRight(categoryPad) + string.Format("{0:C}", bankDebt).PadLeft(valuePad) + (string.Format("{0:P2}", bankDebt / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Debt to players: ".PadRight(categoryPad) + string.Format("{0:C}", cashMoneyDebt).PadLeft(valuePad) + (string.Format("{0:P2}", cashMoneyDebt / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine();
+
+            Console.WriteLine("Net worth: ".PadRight(categoryPad) + string.Format("{0:C}", netWorth).PadLeft(valuePad) + (string.Format("{0:P2}", netWorth / assets)).PadLeft(percentagePad));
+            Console.WriteLine("Total asset value: ".PadRight(categoryPad) + string.Format("{0:C}", assets).PadLeft(valuePad) + (string.Format("{0:P2}", assets / netWorth)).PadLeft(percentagePad));
+            Console.WriteLine("Total liabilities value: ".PadRight(categoryPad) + string.Format("{0:C}", liabilities).PadLeft(valuePad) + (string.Format("{0:P2}", liabilities / assets)).PadLeft(percentagePad));
+        }
+
         private static string Build(string command)
         {
             Property property = GetProperty(ReadInt("Property ID: "));
@@ -221,12 +264,12 @@ namespace monoconta
 
         private static void Debit(string command)
         {
-            var player = ByID(ReadInt("ID: "));
+            var entity = ByID(ReadInt("ID: "));
             double amount = ReadDouble("Sum: ");
-            if (player == admin && char.IsUpper(command[0]))
+            if (entity == admin && char.IsUpper(command[0]))
                 amount *= 0.9125;
-            player.Money -= amount;
-            if (player.Money < 0 && financedeficit)
+            entity.Money -= amount;
+            if (entity.Money < 0 && financedeficit)
             {
                 // let's see how we can finance this
                 Console.WriteLine("Debitor is out of cash. \n\t>Loan (bank, interplayer) [loan]\n\t>Share sale [sellshares,shares,sell,sh]");
@@ -234,16 +277,16 @@ namespace monoconta
                 if (variant == "loan")
                 {
                     int from = ReadInt("Creditor ID: ");
-                    Loan("loan", player, from, -player.Money);
+                    Loan("loan", entity, from, -entity.Money);
                 }
                 else if (variant == "sellshares" || variant == "shares" || variant == "sell" || variant == "sh")
                 {
                     Company sharesOf = ByID(ReadInt("Shares of: ")) as Company;
                     double price = ReadDouble("Price: ");
                     price = price == 0 ? sharesOf.ShareValue : price;
-                    int shareCount = (int)Math.Ceiling((-player.Money) / price);
+                    int shareCount = (int)Math.Ceiling((-entity.Money) / price);
                     int shareBuyerID = ReadInt("Beneficiary ID: ");
-                    SellShares(ByID(shareBuyerID), player, sharesOf, shareCount, sharesOf.ShareValue);
+                    SellShares(ByID(shareBuyerID), entity, sharesOf, shareCount, sharesOf.ShareValue);
                 }
             }
         }
@@ -664,6 +707,15 @@ namespace monoconta
                 fund.ManagerVoteMultiplier = ReadDouble("Value: ");
         }
 
+        private static void SetPropFlow()
+        {
+            Property property = ReadProperty();
+            double rentflow = ReadDouble("Rent flow in: ");
+            double consflow = ReadDouble("Cost flow out: ");
+            property.SetRentFlowCounter(rentflow);
+            property.SetConstructionCostCounter(consflow);
+        }
+
         private static void CreateDeposit()
         {
             var depositer = ByID(ReadInt("Depositer: "));
@@ -765,7 +817,7 @@ namespace monoconta
                     int rounds = ReadInt("Rounds: ");
                     double rentMulti = ReadDouble("Rent/round multiplier: ");
 
-                    RentSwap contract = new RentSwap(name, longParty, shortParty, propID, fixedRent, rentMulti, rounds);
+                    RentSwapContract contract = new RentSwapContract(name, longParty, shortParty, propID, fixedRent, rentMulti, rounds);
                     RentSwapContracts.Add(contract);
                     Console.WriteLine("Contract {0} created", contract.ID);
                 }
@@ -788,8 +840,8 @@ namespace monoconta
                     {
                         if (contract is InterestRateSwap)
                             InterestRateSwapContracts.Remove(contract as InterestRateSwap);
-                        else if (contract is RentSwap)
-                            RentSwapContracts.Remove(contract as RentSwap);
+                        else if (contract is RentSwapContract)
+                            RentSwapContracts.Remove(contract as RentSwapContract);
                     }
                 }
             }

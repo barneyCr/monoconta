@@ -47,26 +47,55 @@ namespace monoconta
         public double TotalAssetValue
 		{
 			get
-			{
-				double loansMade = MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
-				double deposits = this.Deposits.Sum(deposit => deposit.CurrentCapitalBase);
-				double shares = MainClass.Entities.OfType<Company>().Where(entity => entity.ShareholderStructure.ContainsKey(this)).Sum(entity => entity.ShareholderStructure[this] * entity.ShareValue);
+            {
+                double loansMade = this.CashLoansMadeValue;
+                double deposits = this.DepositsValue;
+                double shares = this.SharesInOtherCompaniesValue;
+                double shortedShares = this.CreditExtended-loansMade; 
                 double reAssets = this.RealEstateAssetsValue;
 
                 return loansMade + deposits + shares + reAssets;
-			}
-		}
+            }
+        }
+
         /// <summary>
         /// Made up of bank debt and debts owed to other players.
         /// </summary>
         /// <value>The total liabilities value.</value>
-		public double TotalLiabilitiesValue
+        public double TotalLiabilitiesValue
 		{
-			get
-			{
-                return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value)+ShortedSharesValue;
-			}
+            get
+            {
+                return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value) + ShortedSharesValue;
+            }
 		}
+         /// <summary>
+         /// Does not include shares lent to others.
+         /// </summary>
+         /// <value>The shares in other companies value.</value>
+        public double SharesInOtherCompaniesValue
+        {
+            get
+            {
+                return MainClass.Entities.OfType<Company>().Where(entity => entity.ShareholderStructure.ContainsKey(this)).Sum(entity => entity.ShareholderStructure[this] * entity.ShareValue);
+            }
+        }
+
+        public double DepositsValue
+        {
+            get
+            {
+                return this.Deposits.Sum(deposit => deposit.CurrentCapitalBase);
+            }
+        }
+
+        public double CashLoansMadeValue
+        {
+            get
+            {
+                return MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
+            }
+        }
 
         public IEnumerable<ShortSellingStructure> ShortedShareStructures {
             get
@@ -83,6 +112,22 @@ namespace monoconta
             get
             {
                 return ShortedShareStructures.Sum(act => act.ShareCount * act.ShortedCompany.ShareValue);
+            }
+        }
+
+        /// <summary>
+        /// Gets the shorted shares lent value.
+        /// </summary>
+        /// <value>The shorted shares lent value.</value>
+        public double ShortedSharesLentValue {
+            get
+            {
+                return MainClass.Entities.OfType<Company>().
+                    Where(company =>
+                    company.ShortSellingActivity.Any(pair => pair.Key.Key == this)).
+                    Sum(
+                        company => company.ShareValue * company.ShortSellingActivity.Where(
+                            pair => pair.Key.Key == this).Sum(pair => pair.Value));
             }
         }
 
@@ -109,14 +154,7 @@ namespace monoconta
         {
             get
             {
-                double loans = MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
-                double sharesLent = MainClass.Entities.OfType<Company>().
-                    Where(company =>
-                    company.ShortSellingActivity.Any(pair => pair.Key.Key == this)).
-                    Sum(
-                        company => company.ShareValue * company.ShortSellingActivity.Where(
-                            pair => pair.Key.Key == this).Sum(pair => pair.Value));
-                return loans + sharesLent;
+                return CashLoansMadeValue + ShortedSharesLentValue;
             }
         }
 
@@ -128,22 +166,33 @@ namespace monoconta
         public virtual void OnPassedStart()
         {
             this.PassedStartCounter++;
+
             var interestRateSwaps = MainClass.InterestRateSwapContracts.Where(swap => swap.ShortParty == this);
             foreach (var swap in interestRateSwaps)
             {
                 swap.Call();
             }
-            List<RentSwap> toRemove = new List<RentSwap>();
+
+            List<RentSwapContract> contractsToRemove = new List<RentSwapContract>();
             foreach (var rentSwap in MainClass.RentSwapContracts.Where(swap => swap.ShortParty == this))
             {
                 if (!rentSwap.PassedStartEvent())
                 {
-                    Console.WriteLine("Contract {0} is being terminated", rentSwap.Name);
                     rentSwap.DescribeSpecific();
-                    toRemove.Add(rentSwap);
+                    Console.WriteLine("\n\tContract {0} has approached the end. Reenact?", rentSwap.Name);
+                    if (Console.ReadLine() != "yes")
+                    {
+                        contractsToRemove.Add(rentSwap);
+                        Console.WriteLine("Contract terminated.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Contract re-enacted for another {0} rounds", rentSwap.Terms.Rounds);
+                        rentSwap.Terms.Rounds *= 2;
+                    }
                 }
             }
-            MainClass.RentSwapContracts.RemoveAll(rsw=>toRemove.Contains(rsw));
+            MainClass.RentSwapContracts.RemoveAll(rsw => contractsToRemove.Contains(rsw));
         }
 
         public virtual void RegisterBook() {
@@ -208,6 +257,7 @@ namespace monoconta
             foreach (var item in particularSharesLent)
             {
                 Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
+                // shares lent value added below, in shares in companies
             }
 
             Console.WriteLine("Deposits:\t\t[{0:C}]", this.Deposits.Sum(dep=>dep.CurrentCapitalBase));
