@@ -158,6 +158,10 @@ namespace monoconta
                     {
                         CreateCompany();
                     }
+                    else if (command == "createfund")
+                    {
+                        CreateFund();
+                    }
                     else if (command == "issuesh")
                     {
                         IssueShares();
@@ -178,13 +182,14 @@ namespace monoconta
                     {
                         ChangePeg();
                     }
-                    else if (command == "createfund")
-                    {
-                        CreateFund();
-                    }
+                   
                     else if (command == "changefee")
                     {
                         ChangeFee();
+                    }
+                    else if (command == "viewfees")
+                    {
+                        ViewFees();
                     }
                     else if (command == "changemanager")
                     {

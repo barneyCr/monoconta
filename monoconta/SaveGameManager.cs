@@ -145,8 +145,21 @@ namespace monoconta
                         xml.WriteEndElement(); // manager
                         xml.WriteStartElement("compensation");
                         {
-                            xml.WriteElementString("assetfee", fund.Compensation.AssetFee.ToF3Double());
-                            xml.WriteElementString("performancefee", fund.Compensation.PerformanceFee.ToF3Double());
+                            xml.WriteStartElement("rules");
+                            foreach (var shareholder in fund.ShareholderStructure)
+                            {
+                                xml.WriteStartElement("shareholder");
+                                xml.WriteAttributeString("id", shareholder.Key.ID.ToString());
+                                xml.WriteElementString("assetfee", fund.CompensationRules[shareholder.Key].AssetFee.ToF3Double());
+                                xml.WriteElementString("performancefee", fund.CompensationRules[shareholder.Key].PerformanceFee.ToF3Double());
+                                xml.WriteEndElement(); // shareholder
+                            }
+                            xml.WriteEndElement(); // rules
+
+                            xml.WriteStartElement("defaults");
+                            xml.WriteElementString("assetfee", fund.DefaultCompensationRules.AssetFee.ToF3Double());
+                            xml.WriteElementString("performancefee", fund.DefaultCompensationRules.PerformanceFee.ToF3Double());
+                            xml.WriteEndElement(); // defaults
                         }
                         xml.WriteEndElement(); // compensation
                         xml.WriteElementString("votepower", fund.ManagerVoteMultiplier.ToString());

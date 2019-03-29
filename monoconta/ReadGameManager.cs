@@ -23,6 +23,7 @@ namespace monoconta
             this.UnresolvedShareholdingDictionary = new Dictionary<Company, Dictionary<int, int>>();
             this.UnresolvedShortSellingDictionary = new Dictionary<Company, Dictionary<KeyValuePair<int, int>, int>>();
             this.UnresolvedFundManagersDictionary = new Dictionary<HedgeFund, int>();
+            this.UnresolvedFundCompStructuresDictionary = new Dictionary<HedgeFund, Dictionary<int, HedgeFund.CompStructure>>();
             this.UnresolvedNewMoneyInFundDictionary = new Dictionary<HedgeFund, Dictionary<int, int>>();
         }
 
@@ -78,6 +79,7 @@ namespace monoconta
         private readonly Dictionary<Company, Dictionary<KeyValuePair<int,int>, int>> UnresolvedShortSellingDictionary;
         private readonly Dictionary<HedgeFund, int> UnresolvedFundManagersDictionary;
         private readonly Dictionary<HedgeFund, Dictionary<int, int>> UnresolvedNewMoneyInFundDictionary;
+        private Dictionary<HedgeFund, Dictionary<int, HedgeFund.CompStructure>> UnresolvedFundCompStructuresDictionary;
 
         private readonly Func<XElement, string, string> readerFunc = (el, str) => el.Element(str).Value;
 
@@ -298,6 +300,12 @@ namespace monoconta
                 fund.NewlySubscribedFunds = newMoneySituation.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value); 
                 missingLinkCounter++;
             }
+            foreach (KeyValuePair<HedgeFund, Dictionary<int, HedgeFund.CompStructure>> compStructure in this.UnresolvedFundCompStructuresDictionary)
+            {
+                HedgeFund fund = compStructure.Key;
+                fund.CompensationRules = compStructure.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value);
+                missingLinkCounter++;
+            }
             Console.WriteLine("\tResolved{0} missing entity links", verboseDebug ? " " + missingLinkCounter.ToString(): "");
         }
 
@@ -339,11 +347,34 @@ namespace monoconta
 
                 // compensation:
                 XElement compElement = managementElement.Element("compensation");
-                double assetFee = compElement.Element("assetfee").Value.ToDouble();
-                double performanceFee = compElement.Element("performancefee").Value.ToDouble();
-                fund.Compensation = new HedgeFund.CompStructure(assetFee, performanceFee);
-                int votePowerMultiplier = managementElement.Element("votepower").Value.ToInt();
+                if (compElement.Element("defaults") != null) // new type of compensation rules
+                {
+                    // defaults:
+                    double defaultAssetFee = compElement.Element("defaults").Element("assetfee").Value.ToDouble();
+                    double defaultPerformanceFee = compElement.Element("defaults").Element("performancefee").Value.ToDouble();
+                    fund.DefaultCompensationRules = new HedgeFund.CompStructure(defaultAssetFee, defaultPerformanceFee);
 
+                    // particulars:
+                    Dictionary<int, HedgeFund.CompStructure> compensationRules = new Dictionary<int, HedgeFund.CompStructure>();
+                    foreach (var shareholderCompRuleElement in compElement.Element("rules").Elements("shareholder"))
+                    {
+                        int id = shareholderCompRuleElement.Attribute("id").Value.ToInt();
+                        double assetFee = shareholderCompRuleElement.Element("assetfee").Value.ToDouble();
+                        double performanceFee = shareholderCompRuleElement.Element("performancefee").Value.ToDouble();
+                        compensationRules.Add(id, new HedgeFund.CompStructure(assetFee, performanceFee));
+                    }
+                    this.UnresolvedFundCompStructuresDictionary.Add(fund, compensationRules);
+                }
+                else // old files' compensation rules
+                {
+                    double assetFee = compElement.Element("assetfee").Value.ToDouble();
+                    double performanceFee = compElement.Element("performancefee").Value.ToDouble();
+                    fund.DefaultCompensationRules = new HedgeFund.CompStructure(assetFee, performanceFee);
+                    this.UnresolvedFundCompStructuresDictionary.Add(fund,
+                        UnresolvedShareholdingDictionary[fund].ToDictionary(pair => pair.Key, pair => fund.DefaultCompensationRules));
+                }
+                // vote power
+                int votePowerMultiplier = managementElement.Element("votepower").Value.ToInt();
                 fund.ManagerVoteMultiplier = votePowerMultiplier;
 
                 //previous shares' values:

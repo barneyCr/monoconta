@@ -7,7 +7,9 @@ namespace monoconta
     class HedgeFund : Company
     {
         public Entity Manager { get; set; }
-        public CompStructure Compensation { get; set; }
+        public Dictionary<Entity,CompStructure> CompensationRules { get; set; }
+        private CompStructure _defaultComp;
+        public CompStructure DefaultCompensationRules { get => _defaultComp; set => _defaultComp = value; }
 
         public double ManagerVoteMultiplier { get; set; }
 
@@ -16,7 +18,8 @@ namespace monoconta
         {
             //NewlySubscribedFunds = ShareholderStructure.ToDictionary(pair => pair.Key, pair => 0.0);
             this.Manager = manager;
-            this.Compensation = comp;
+            this.CompensationRules = new Dictionary<Entity, CompStructure>() { { manager, comp } };
+            this._defaultComp = comp;
             this.PreviousShareValues = new Dictionary<int, double>(100);
             this.PreviousShareValues[0] = initialValue;
             this.LastShareSplitRatio = 1; // super important
@@ -41,6 +44,8 @@ namespace monoconta
                 NewlySubscribedFunds[entity] += sharesBought;
             else
                 NewlySubscribedFunds.Add(entity, sharesBought);
+            if (!this.CompensationRules.ContainsKey(entity))
+                this.CompensationRules.Add(entity, _defaultComp);
 
             return sharesBought;
         }
@@ -63,17 +68,19 @@ namespace monoconta
             double newValue = this.ShareValue*this.LastShareSplitRatio; // resetat ratio la final functie
             double profitAdded = newValue - oldValue;
             double gainAsQuota = profitAdded / oldValue;
-            double transferableGainsQuota = this.Compensation.PerformanceFee / 100.0 * gainAsQuota;
 
             int totalSharesTransferred = 0;
             Dictionary<Entity, int> newStructure = this.ShareholderStructure.ToDictionary(pair => pair.Key, pair => pair.Value);
+            if (!newStructure.ContainsKey(Manager))
+                newStructure.Add(Manager, 0);
             foreach (var holder in this.ShareholderStructure)
             {
-                if (holder.Key == Manager)
+                if (holder.Key == this.Manager)
                     continue;
+                double transferableGainsQuota = this.CompensationRules[holder.Key].PerformanceFee / 100.0 * gainAsQuota;
                 double holderShares = holder.Value;
                 int sharesTransferedPerformanceFee = Math.Max(0, (int)Math.Ceiling(transferableGainsQuota * holderShares));
-                int sharesTransferedFixedFee = Math.Max(0, (int)Math.Floor(this.Compensation.AssetFee / 100.0 * holderShares));
+                int sharesTransferedFixedFee = Math.Max(0, (int)Math.Floor(this.CompensationRules[holder.Key].AssetFee / 100.0 * holderShares));
                 int shareTransfer = sharesTransferedFixedFee + sharesTransferedPerformanceFee;
                 totalSharesTransferred += shareTransfer;
                 newStructure[holder.Key] -= shareTransfer;
@@ -98,6 +105,7 @@ namespace monoconta
                 if (ShareholderStructure[holder] < 1 && holder != Manager)
                 {
                     ShareholderStructure.Remove(holder);
+                    this.CompensationRules.Remove(holder);
                     NewlySubscribedFunds.Remove(holder);
                 }
             }
@@ -108,15 +116,27 @@ namespace monoconta
         public override void PrintStructure()
         {
             Console.WriteLine("Manager: {0}", this.Manager.Name);
-            Console.WriteLine("Fees: {0}% and {1}%", this.Compensation.AssetFee, this.Compensation.PerformanceFee);
+            Console.WriteLine("Fees: {0}% and {1}%", this._defaultComp.AssetFee, this._defaultComp.PerformanceFee);
             Console.WriteLine("\tlast round's fees: {0:C}", this.LastFeesPaid);
             base.PrintStructure();
+        }
+
+        public void ChangeShareholderFee(Entity shareholder, CompStructure comp)
+        {
+            if(ShareholderStructure.ContainsKey(shareholder))
+            {
+                this.CompensationRules[shareholder] = comp;
+            }
+            else
+            {
+                Console.WriteLine("{0} does not own any shares in {1}", shareholder.Name, this.Name);
+            }
         }
 
         public Dictionary<Entity, int> NewlySubscribedFunds { get; set; }
 
 
-        public  struct CompStructure
+        public struct CompStructure
         {
             public CompStructure(double assetFee, double performanceFee)
             {

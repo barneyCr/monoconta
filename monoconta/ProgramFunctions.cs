@@ -635,10 +635,45 @@ namespace monoconta
         {
             if (ByID(ReadInt("Fund ID: ")) is HedgeFund fund)
             {
-                Console.WriteLine("Current fees: {0:F3}% and {1:F3}%", fund.Compensation.AssetFee, fund.Compensation.PerformanceFee);
-                double ff = ReadDouble("Fixed fee: ");
-                double pf = ReadDouble("Performance fee: ");
-                fund.Compensation = new CompStructure(ff, pf);
+                Console.Write("Default fees (<d>, <all>) or specific <s>? ");
+                string command = Console.ReadLine().ToLower();
+                if (command == "d" || command == "all")
+                {
+                    Console.WriteLine("Current fees: {0:F3}% and {1:F3}%", fund.DefaultCompensationRules.AssetFee, fund.DefaultCompensationRules.PerformanceFee);
+
+                    double ff = ReadDouble("Fixed fee: ");
+                    double pf = ReadDouble("Performance fee: ");
+                    fund.DefaultCompensationRules = new CompStructure(ff, pf);
+                    fund.CompensationRules = fund.CompensationRules.ToDictionary(shareholder => shareholder.Key, shareholder => fund.DefaultCompensationRules);
+                }
+                else if (command == "s")
+                {
+                    Entity shareholder = ByID(ReadInt("Shareholder ID: "));
+                    Console.WriteLine("Current fees: {0:F3}% and {1:F3}%", fund.CompensationRules[shareholder].AssetFee, fund.CompensationRules[shareholder].PerformanceFee);
+
+                    double ff = ReadDouble("Fixed fee: ");
+                    double pf = ReadDouble("Performance fee: ");
+                    fund.ChangeShareholderFee(shareholder, new CompStructure(ff, pf));
+                }
+            }
+        }
+
+        private static void ViewFees()
+        {
+            if (ByID(ReadInt("Fund ID: ")) is HedgeFund fund)
+            {
+                Console.WriteLine("Default fees: {0:F3}% and {1:F3}%", fund.DefaultCompensationRules.AssetFee, fund.DefaultCompensationRules.PerformanceFee);
+                Console.WriteLine("SHAREHOLDER".PadRight(25) + "ASSET FEE".PadLeft(15) + "PERFORMANCE FEE".PadLeft(18));
+                foreach (var compRule in fund.CompensationRules)
+                {
+                    Console.WriteLine(compRule.Key.Name.PadRight(25) + compRule.Value.AssetFee.ToString("F3").PadLeft(15) + compRule.Value.PerformanceFee.ToString("F3").PadLeft(18));
+                }
+
+                Console.Write("Do you wish to change the fees?");
+                if (Console.ReadLine() == "yes")
+                {
+                    ChangeFee();
+                }
             }
         }
 
