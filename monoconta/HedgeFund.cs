@@ -116,9 +116,28 @@ namespace monoconta
         public override void PrintStructure()
         {
             Console.WriteLine("Manager: {0}", this.Manager.Name);
-            Console.WriteLine("Fees: {0}% and {1}%", this._defaultComp.AssetFee, this._defaultComp.PerformanceFee);
+            Console.WriteLine("Default fees: {0}% and {1}%", this._defaultComp.AssetFee, this._defaultComp.PerformanceFee);
+            this.GetWeightedFees(out double waf, out double wpf);
+            Console.WriteLine("Weighted fees: {0:F3}% and {1:F3}%", waf, wpf);
+
             Console.WriteLine("\tlast round's fees: {0:C}", this.LastFeesPaid);
             base.PrintStructure();
+        }
+
+
+        public void GetWeightedFees(out double assetFeeTotal, out double perfFeeTotal)
+        {
+            assetFeeTotal = 0;
+            perfFeeTotal = 0;
+            foreach (var shareholder in this.ShareholderStructure)
+            {
+                if (shareholder.Key == this.Manager)
+                    continue;
+                double ownershipPctg = this.ShareholderStructure[shareholder.Key] / this.ShareCount;
+                CompStructure compRule = this.CompensationRules[shareholder.Key];
+                assetFeeTotal += ownershipPctg * compRule.AssetFee;
+                perfFeeTotal += ownershipPctg * compRule.PerformanceFee;
+            }
         }
 
         public void ChangeShareholderFee(Entity shareholder, CompStructure comp)

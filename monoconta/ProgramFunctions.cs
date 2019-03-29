@@ -663,6 +663,8 @@ namespace monoconta
             if (ByID(ReadInt("Fund ID: ")) is HedgeFund fund)
             {
                 Console.WriteLine("Default fees: {0:F3}% and {1:F3}%", fund.DefaultCompensationRules.AssetFee, fund.DefaultCompensationRules.PerformanceFee);
+                fund.GetWeightedFees(out double assetFeeTotal, out double perfFeeTotal);
+                Console.WriteLine("Weighted fees: {0:F3}% and {1:F3}%", assetFeeTotal, perfFeeTotal);
                 Console.WriteLine("SHAREHOLDER".PadRight(25) + "ASSET FEE".PadLeft(15) + "PERFORMANCE FEE".PadLeft(18));
                 foreach (var compRule in fund.CompensationRules)
                 {
@@ -676,6 +678,7 @@ namespace monoconta
                 }
             }
         }
+
 
         private static void ChangeManager()
         {
