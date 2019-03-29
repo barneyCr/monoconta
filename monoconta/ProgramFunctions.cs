@@ -185,13 +185,15 @@ namespace monoconta
             double cash = entity.Money;
             double sharesInOtherCompaniesValue = entity.SharesInOtherCompaniesValue;
             double reValue = entity.RealEstateAssetsValue;
-            double sharesLentValue = entity.ShortedSharesLentValue;
+            double sharesLentValue = entity.SharesLentToOthersValue;
             double cashMoneyLentValue = entity.CashLoansMadeValue;
             double depositsValue = entity.DepositsValue;
 
             double sharesBorrowedValue = entity.ShortedSharesValue;
             double bankDebt = entity.LiabilityTowardsBank;
             double cashMoneyDebt = entity.Liabilities.Sum(pair => pair.Value);
+
+            double goldValue = GoldManager.GetGoldBarsValue(entity);
 
             double assets = entity.TotalAssetValue+cash;
             double liabilities = entity.TotalLiabilitiesValue;
@@ -207,16 +209,49 @@ namespace monoconta
             Console.WriteLine("Shares lent: ".PadRight(categoryPad) + string.Format("{0:C}", sharesLentValue).PadLeft(valuePad) + (string.Format("{0:P2}", sharesLentValue / netWorth)).PadLeft(percentagePad));
             Console.WriteLine("Real estate assets: ".PadRight(categoryPad) + string.Format("{0:C}", reValue).PadLeft(valuePad) + (string.Format("{0:P2}", reValue / netWorth)).PadLeft(percentagePad));
             Console.WriteLine("Loans made: ".PadRight(categoryPad) + string.Format("{0:C}", cashMoneyLentValue).PadLeft(valuePad) + (string.Format("{0:P2}", cashMoneyLentValue / netWorth)).PadLeft(percentagePad));
+            if (goldValue >= 0)
+                Console.WriteLine("Gold owned: ".PadRight(categoryPad) + string.Format("{0:C}", goldValue).PadLeft(valuePad) + (string.Format("{0:P2}", goldValue / netWorth)).PadLeft(percentagePad));
+
             Console.WriteLine();
 
             Console.WriteLine("Shorted shares: ".PadRight(categoryPad) + string.Format("{0:C}", sharesBorrowedValue).PadLeft(valuePad) + (string.Format("{0:P2}", sharesBorrowedValue / netWorth)).PadLeft(percentagePad));
             Console.WriteLine("Debt to bank: ".PadRight(categoryPad) + string.Format("{0:C}", bankDebt).PadLeft(valuePad) + (string.Format("{0:P2}", bankDebt / netWorth)).PadLeft(percentagePad));
             Console.WriteLine("Debt to players: ".PadRight(categoryPad) + string.Format("{0:C}", cashMoneyDebt).PadLeft(valuePad) + (string.Format("{0:P2}", cashMoneyDebt / netWorth)).PadLeft(percentagePad));
+            if (goldValue < 0)
+                Console.WriteLine("Gold shorted: ".PadRight(categoryPad) + string.Format("{0:C}", -goldValue).PadLeft(valuePad) + (string.Format("{0:P2}", -goldValue / netWorth)).PadLeft(percentagePad));
+
+
             Console.WriteLine();
 
             Console.WriteLine("Net worth: ".PadRight(categoryPad) + string.Format("{0:C}", netWorth).PadLeft(valuePad) + (string.Format("{0:P2}", netWorth / assets)).PadLeft(percentagePad));
             Console.WriteLine("Total asset value: ".PadRight(categoryPad) + string.Format("{0:C}", assets).PadLeft(valuePad) + (string.Format("{0:P2}", assets / netWorth)).PadLeft(percentagePad));
             Console.WriteLine("Total liabilities value: ".PadRight(categoryPad) + string.Format("{0:C}", liabilities).PadLeft(valuePad) + (string.Format("{0:P2}", liabilities / assets)).PadLeft(percentagePad));
+        }
+
+
+        private static void ShowSharePerformance()
+        {
+            if (ByID(ReadInt("Fund ID: ")) is HedgeFund fund)
+            {
+                Console.WriteLine("Round 0: {0:C}", fund.PreviousShareValues[0]);
+
+                for (int i = 1; i < fund.PreviousShareValues.Count; i++)
+                {
+                    double last = fund.PreviousShareValues[i - 1];
+                    double current = fund.PreviousShareValues[i];
+                    string sign = current >= last ? "+" : "-";
+                    Console.WriteLine("Round {0}: {1:C}\t{2} {3:P2}", i.ToString().PadLeft(3), fund.PreviousShareValues[i].ToPaddedLeftCashString(10), sign, Math.Abs(current/last-1));
+                }
+            }
+        }
+
+        private static void ChangeGoldDeltas()
+        {
+            GoldManager.DownDeltaMax = ReadDouble("Down max: ");
+            GoldManager.DownDeltaMin = ReadDouble("Down min: ");
+            GoldManager.UpDeltaMin = ReadDouble("Up min: ");
+            GoldManager.UpDeltaMax = ReadDouble("Up max: ");
+            GoldManager.MaximumFiveDeviation = ReadDouble("Five range: ");
         }
 
         private static string Build(string command)
@@ -324,6 +359,7 @@ namespace monoconta
             }
         }
 
+
         private static void Pass(string command)
         {
             if (ByID(ReadInt("ID: ")) is Player player)
@@ -331,11 +367,11 @@ namespace monoconta
             repeat:
                 player.OnPassedStart();
                 player.Money += startBonus;
-                player.LiabilityTowardsBank *= ((InterestRateBase / (player == admin && command.ToLower() == "passs" ? 2.25 : 2)) / 100 + 1);
-                foreach (var creditor in player.Liabilities.Keys.ToList())
-                {
-                    player.Liabilities[creditor] *= ((InterestRateBase / 3) / 100 + 1);
-                }
+
+                player.DoLiabilitiesOnPass(command);
+                Console.WriteLine("{0} received {1:C} as interest on gold", player.Name, player.ReceiveInterestOnGold());
+
+
                 foreach (var deposit in player.Deposits.ToList())
                 {
                     if (!deposit.PassRound(player == admin))
@@ -354,12 +390,10 @@ namespace monoconta
                     foreach (var company in player.PeggedCompanies)
                     {
                         company.RegisterBook();
-                        company.LiabilityTowardsBank *= ((InterestRateBase / ((player == admin && command.ToLower() == "passs") ? 2.25 : 2)) / 100 + 1);
+                        company.DoLiabilitiesOnPass(command);
 
-                        foreach (var creditor in company.Liabilities.Keys.ToList())
-                        {
-                            company.Liabilities[creditor] *= ((InterestRateBase / 3) / 100 + 1);
-                        }
+                        Console.WriteLine("{0} received {1:C} as interest on gold", company.Name, company.ReceiveInterestOnGold());
+
                         foreach (KeyValuePair<KeyValuePair<Entity, Entity>, double> shortSale in company.ShortSellingActivity)
                         {
                             Entity lender = shortSale.Key.Key;
@@ -414,6 +448,7 @@ namespace monoconta
                     goto repeat;
                 }
                 player.PrintSituation(true);
+                GoldManager.PushForNextPrice();
             }
         }
 
@@ -844,6 +879,52 @@ namespace monoconta
                             RentSwapContracts.Remove(contract as RentSwapContract);
                     }
                 }
+            }
+        }
+
+        public static void RunGoldman()
+        {
+            Console.WriteLine("Current price: {0:C}/kg", GoldManager.CurrentGoldPrice);
+            Console.WriteLine("<buy>, <sell>, <prices>");
+            string command = Console.ReadLine();
+            if (command == "buy" || command == "sell")
+            {
+                Entity buyer = ByID(ReadInt("ID: "));
+                double bars = GoldManager.GetGoldBarsNumberOwned(buyer);
+                Console.WriteLine("Current holdings: {0:F3} bars (= {1:C})", bars, GoldManager.CurrentGoldPrice);
+                Console.WriteLine("Bars(b) or dollars?");
+                string commandType = Console.ReadLine();
+                double dollars;
+                if (commandType == "bars" || commandType == "b")
+                {
+                    dollars = ReadDouble("Total kgs:") * GoldManager.CurrentGoldPrice;
+                }
+                else
+                {
+                    dollars = commandType.ToDouble();
+                }
+                var function = command == "buy" ? (Action<Entity, double>)GoldManager.BuyGold : GoldManager.SellGold;
+                function(buyer, dollars);
+            }
+            else if (command.ToLower() == "history" || command.ToLower() == "prices")
+            {
+                int i = 0;
+                foreach (var price in GoldManager.HistoricalGoldPrices)
+                {
+                    if (++i % 10 == 0)
+                        Console.WriteLine();
+                    Console.WriteLine("{0}. {1:C}", i, price);
+                }
+                Console.WriteLine();
+            }
+            else if (command.ToLower() == "mk")
+            {
+                int i = 0;
+                foreach (var price in GoldManager.FutureGoldPrices)
+                {
+                    Console.WriteLine("{0}. {1:C}", i++, price);
+                }
+
             }
         }
     }

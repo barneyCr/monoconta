@@ -55,27 +55,29 @@ namespace monoconta
                      (prop.OptionOwner != null && prop.OptionOwner == this.Owner) ||
                      (prop.Owner != null && prop.Owner == this.Owner))
                 );
-                double numerator=0;
-                //if (owned == 0)
-                    //numerator = 0;
-                //else
-                //{
-                    if (Neighbourhood.Spaces == 2)
-                        numerator = owned == 1 ? 11 : 16;
-                    else if (Neighbourhood.Spaces >= 3)
+                double numerator = 0;
+                bool canBeBuiltOn = CanBeBuiltOn;
+                if (Neighbourhood.Spaces == 2)
+                    numerator = owned == 2 || canBeBuiltOn ? 16 : 11;
+                else if (Neighbourhood.Spaces >= 3)
+                {
+                    if (!canBeBuiltOn)
                     {
                         if (owned == 1)
                             numerator = 9;
                         else if (owned == 2)
                             numerator = 13;
                         else if (owned >= 3)
-                            numerator = 17 / 3 * (owned);
+                            numerator = 17.0 / 3 * ((double)owned);
                     }
+                    else
+                        numerator = 17.0;
+                }
                 //}
                 double denominator = 6.35 + this.Neighbourhood.Spaces * 11 / 6; // 1.8333
                 double r = ResidentialRent * BalanceSheetValueMultiplier;
-                return (numerator / denominator) * (r < BuyPrice ? BuyPrice : r);
-            }
+                return (numerator / denominator) * (r < BuyPrice ? BuyPrice : r); // todo
+            } 
         }
 
         public double ResidentialRent

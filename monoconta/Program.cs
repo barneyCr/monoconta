@@ -51,6 +51,11 @@ namespace monoconta
         static Random rand = new Random();
         static bool financedeficit = true;
 
+        public static void Main(string[] args)
+        {
+            LoadGame(args);
+            Run();
+        }
 
         public static void LoadGame(string[] args)
         {
@@ -66,13 +71,15 @@ namespace monoconta
 
             args = fileName == "" ? args : new[] { Environment.CurrentDirectory + "/" + fileName };
 
+            Dictionary<Entity, double> goldRegToBeRead = null;
+
             if (args.Length >= 1)
             {
                 Console.Write("Verbose debug: ");
 
                 ReadGameManager readManager = new ReadGameManager(fileName, Console.ReadLine() == "yes");
                 readManager.Read(Properties);
-                readManager.Integrate(out Players, out Companies, out HedgeFunds, out RentSwapContracts, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
+                readManager.Integrate(out Players, out Companies, out HedgeFunds, out RentSwapContracts, out goldRegToBeRead, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
                 SGManager = new SaveGameManager(GameName, fileName);
             }
             else
@@ -95,14 +102,9 @@ namespace monoconta
                 Console.WriteLine("Done!\n\n");
             }
             InterestRateSwapContracts = new List<InterestRateSwap>();
+            GoldManager.InitializeNew(goldRegToBeRead);
             DiceManager = new DiceManager();
             watch.Stop();
-        }
-
-        public static void Main(string[] args)
-        {
-            LoadGame(args);
-            Run();
         }
 
         static double CalculateRealEstateValues(Entity arg)
@@ -110,8 +112,6 @@ namespace monoconta
             double personal = arg.RealEstateAssetsValue;
             return personal + 0; // todo
         }
-
-
        
         private static Property ReadProperty()
         {

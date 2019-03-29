@@ -7,11 +7,13 @@ using System.Diagnostics;
 namespace monoconta
 {
     [DebuggerDisplay("{Name}, {ID}, {Money}")]
-	abstract class Entity
+	public abstract class Entity
 	{
         static Entity() {
             OrderPropertiesByID = true;
         }
+        public static bool OrderPropertiesByID { get; set; }
+
 
         /// <summary>
         /// Unique Identifier.
@@ -51,10 +53,12 @@ namespace monoconta
                 double loansMade = this.CashLoansMadeValue;
                 double deposits = this.DepositsValue;
                 double shares = this.SharesInOtherCompaniesValue;
-                double shortedShares = this.CreditExtended-loansMade; 
+                double sharesLent = this.SharesLentToOthersValue; 
                 double reAssets = this.RealEstateAssetsValue;
 
-                return loansMade + deposits + shares + reAssets;
+                double goldValue = GoldManager.GetGoldBarsValue(this);
+
+                return loansMade + deposits + shares + sharesLent + reAssets + (goldValue > 0 ? goldValue : 0);
             }
         }
 
@@ -66,7 +70,8 @@ namespace monoconta
 		{
             get
             {
-                return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value) + ShortedSharesValue;
+                double goldValue = GoldManager.GetGoldBarsValue(this);
+                return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value) + ShortedSharesValue + (goldValue < 0 ? -goldValue : 0);
             }
 		}
          /// <summary>
@@ -119,7 +124,7 @@ namespace monoconta
         /// Gets the shorted shares lent value.
         /// </summary>
         /// <value>The shorted shares lent value.</value>
-        public double ShortedSharesLentValue {
+        public double SharesLentToOthersValue {
             get
             {
                 return MainClass.Entities.OfType<Company>().
@@ -154,7 +159,7 @@ namespace monoconta
         {
             get
             {
-                return CashLoansMadeValue + ShortedSharesLentValue;
+                return CashLoansMadeValue + SharesLentToOthersValue;
             }
         }
 
@@ -173,7 +178,7 @@ namespace monoconta
                 swap.Call();
             }
 
-            List<RentSwapContract> contractsToRemove = new List<RentSwapContract>();
+            List<RentSwapContract> rentContractsToRemove = new List<RentSwapContract>();
             foreach (var rentSwap in MainClass.RentSwapContracts.Where(swap => swap.ShortParty == this))
             {
                 if (!rentSwap.PassedStartEvent())
@@ -182,7 +187,7 @@ namespace monoconta
                     Console.WriteLine("\n\tContract {0} has approached the end. Reenact?", rentSwap.Name);
                     if (Console.ReadLine() != "yes")
                     {
-                        contractsToRemove.Add(rentSwap);
+                        rentContractsToRemove.Add(rentSwap);
                         Console.WriteLine("Contract terminated.");
                     }
                     else
@@ -192,12 +197,36 @@ namespace monoconta
                     }
                 }
             }
-            MainClass.RentSwapContracts.RemoveAll(rsw => contractsToRemove.Contains(rsw));
+            MainClass.RentSwapContracts.RemoveAll(rsw => rentContractsToRemove.Contains(rsw));
         }
 
         public virtual void RegisterBook() {
 			
 		}
+
+        public void DoLiabilitiesOnPass(string command)
+        {
+            double bankRate = MainClass.InterestRateBase / (this == MainClass.admin && command.ToLower() == "passs" ? 2.25 : 2);
+
+            double bankInterest = this.LiabilityTowardsBank * (bankRate / 100);
+            double goldBankInterestCredit = GoldManager.CalculateBankInterestReduction(this);
+
+            double modifiedBankInterest = bankInterest - goldBankInterestCredit;
+            if (modifiedBankInterest > 0)
+                this.LiabilityTowardsBank += modifiedBankInterest;
+
+            foreach (var creditor in this.Liabilities.Keys.ToList())
+            {
+                this.Liabilities[creditor] *= ((MainClass.InterestRateBase / 3) / 100 + 1);
+            }
+        }
+
+        public double ReceiveInterestOnGold()
+        {
+            double goldInterestReceived = GoldManager.CalculateGoldInterestReceive(this);
+            this.Money += goldInterestReceived;
+            return goldInterestReceived;
+        }
 
         public double GetDirectLiabilitiesInterest()
         {
@@ -206,9 +235,7 @@ namespace monoconta
             double cost = LiabilityTowardsBank * mainRate / 200 + Liabilities.Sum(p => p.Value) * mainRate / 300 + ShortedSharesValue * MainClass.SSFR18 / 324 * 151 / 117 * mainRate / 100;
             return cost / totalLiab * 100;
          }
-
-        public static bool OrderPropertiesByID { get; set; }
-
+         
         public void PrintCash()
         {
             Console.WriteLine("\n-------\n[({0}) {1}] Cash: {2:C}", ID, Name, Money);
@@ -238,6 +265,17 @@ namespace monoconta
             {
                 Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
             }
+
+            Console.WriteLine("GOLD bars owned: {0:F2} kg x {1:C} = {2:C}",
+                GoldManager.GetGoldBarsNumberOwned(this),
+                GoldManager.CurrentGoldPrice,
+                GoldManager.GetGoldBarsValue(this));
+            Console.WriteLine("\tbank interest reduction: {0:C}", GoldManager.CalculateBankInterestReduction(this));
+            Console.WriteLine("\tinterest on bars: {0:C}", GoldManager.CalculateGoldInterestReceive(this));
+            if (GoldManager.GetGoldBarsNumberOwned(this) > 0)
+                financialAssets += GoldManager.GetGoldBarsValue(this);
+            else financialLiabilities += -GoldManager.GetGoldBarsValue(this);
+
 
             Console.WriteLine("Loans made: ");
 			var book = from entity in MainClass.Entities
@@ -339,7 +377,8 @@ namespace monoconta
                 }
             }
             Console.WriteLine("Real estate options: ");
-            foreach (var ppty in MainClass.Properties.OrderBy(prop => OrderPropertiesByID ? prop.ID : prop.ParentID))
+            var orderedProperties = MainClass.Properties.OrderBy(prop => OrderPropertiesByID ? prop.ID : prop.ParentID);
+            foreach (var ppty in orderedProperties)
             {
                 if (ppty.OptionOwner == this) {
                     Console.WriteLine("\tOption on {0} in {1} neighbourhood, valued at {2:C}", ppty.Name, ppty.Neighbourhood.Name,ppty.OptionValue);

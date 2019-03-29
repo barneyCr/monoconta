@@ -79,6 +79,7 @@ namespace monoconta
                 WriteAllEntities(xml);
                 WriteProperties(xml);
                 WriteContracts(xml);
+                WriteGold(xml);
 
                 xml.WriteEndElement(); // game
                 xml.WriteEndDocument();
@@ -332,6 +333,34 @@ namespace monoconta
 
             xml.WriteEndElement(); // contracts
 
+        }
+
+        private void WriteGold(XmlWriter xml)
+        {
+            xml.WriteStartElement("gold");
+            {
+                xml.WriteElementString("price", GoldManager.CurrentGoldPrice.ToF3Double());
+                xml.WriteStartElement("deltas");
+                {
+                    xml.WriteElementString("downmax", GoldManager.DownDeltaMax.ToF3Double());
+                    xml.WriteElementString("downmin", GoldManager.DownDeltaMin.ToF3Double());
+                    xml.WriteElementString("upmin", GoldManager.UpDeltaMin.ToF3Double());
+                    xml.WriteElementString("upmax", GoldManager.UpDeltaMax.ToF3Double());
+                    xml.WriteElementString("fiverange", GoldManager.MaximumFiveDeviation.ToF3Double());
+                }
+                xml.WriteEndElement(); // deltas
+                xml.WriteStartElement("register");
+                foreach (var item in GoldManager.GoldRegister)
+                {
+                    xml.WriteStartElement("entry");
+                    xml.WriteAttributeString("id", item.Key.ID.ToString());
+                    xml.WriteElementString("fullname", item.Key.Name);
+                    xml.WriteElementString("qty", item.Value.ToF3Double());
+                    xml.WriteEndElement(); //entry
+                }
+                xml.WriteEndElement(); //register
+            }
+            xml.WriteEndElement(); //gold
         }
     }
 }

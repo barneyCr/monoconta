@@ -1,7 +1,7 @@
 ﻿using System;
 namespace monoconta
 {
-	class Deposit {      
+	public class Deposit {      
         public double Principal;
         public double TotalInterest;
         public double InterestRate;

@@ -52,10 +52,11 @@
     <Compile Include="ShortSellingStructure.cs" />
     <Compile Include="Contract.cs" />
     <Compile Include="ProgramRun.cs" />
-    <Compile Include="ProgramCommands.cs" />
+    <Compile Include="ProgramFunctions.cs" />
     <Compile Include="InterestRateSwap.cs" />
     <Compile Include="RentSwapContract.cs" />
     <Compile Include="IDescribable.cs" />
+    <Compile Include="GoldManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">

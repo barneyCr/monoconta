@@ -83,6 +83,8 @@ namespace monoconta
                         Console.WriteLine("{0:F3}% - interest rate for interplayer loans", InterestRateBase / 3);
                         Console.WriteLine("{0:F3}% - interest rate for bank loans", InterestRateBase / 2);
                         Console.WriteLine("{0:F3}% - interest rate for short selling", InterestRateBase * MainClass.SSFR18 / 324 * 151 / 117);
+                        Console.WriteLine("{0:F3}% - interest rate discount for gold owners", InterestRateBase / 2 / 3.75);
+                        Console.WriteLine("{0:F3}% - interest rate paid on gold", InterestRateBase / 2 / 4.5);
                         int infmax = ReadInt("Interest rates on X rounds: X = ");
                         for (int i = 1; i <= infmax; i++)
                         {
@@ -292,7 +294,7 @@ namespace monoconta
                         Console.WriteLine("Rent of {0:C} was paid to {1}.", rent, land.Owner.Name);
                         Transfer("transfer", land.Owner, payer, rent);
                         var rentContract = RentSwapContracts.FirstOrDefault(swp => swp.ShortParty == land.Owner && swp.PropertyID == land.ID);
-                        if (rentContract!= null)
+                        if (rentContract != null)
                         {
                             rentContract.ReceivedRentEvent(rent);
                         }
@@ -323,7 +325,7 @@ namespace monoconta
                             Console.WriteLine("Value: {0:C}", property.Value);
                             Console.WriteLine("Residential rent: {0:C}", property.ResidentialRent);
                             Console.WriteLine("Rent flow: {0:C}\nMoney spent: {1:C}", property.RentFlowIn, property.MoneyFlowOut);
-                            if (RentSwapContracts.Any(swp=>swp.PropertyID == property.ID))
+                            if (RentSwapContracts.Any(swp => swp.PropertyID == property.ID))
                             {
                                 RentSwapContracts.FirstOrDefault(swp => swp.PropertyID == property.ID).DescribeSpecific();
                             }
@@ -411,6 +413,14 @@ namespace monoconta
                     {
                         RunContractManager();
                     }
+                    else if (command == "goldman")
+                    {
+                        RunGoldman();
+                    }
+                    else if (command == "shareperf")
+                    {
+                        ShowSharePerformance();
+                    }
                 }
                 catch (Exception e)
                 {
@@ -418,7 +428,6 @@ namespace monoconta
                 }
             }
         }
-
 
     }
 }

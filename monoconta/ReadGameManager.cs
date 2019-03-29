@@ -32,6 +32,7 @@ namespace monoconta
         private List<Property> Properties = new List<Property>();
         //private List<Neighbourhood> Neighbourhoods = new List<Neighbourhood>();
         private List<RentSwapContract> RentSwapContracts = new List<RentSwapContract>();
+        private Dictionary<Entity, double> GoldRegister = new Dictionary<Entity, double>();
 
         private string gameName;
         private double IRB;
@@ -44,6 +45,7 @@ namespace monoconta
             out List<Player> players, out List<Company> companies,
             out List<HedgeFund> hedgeFunds,
             out List<RentSwapContract> rentSwapContracts,
+            out Dictionary<Entity, double> prevGoldRegister,
             out Player admin, out string name,
             out double irb, out double m,
             out double startBonus, out int depoCounter, out double ssfr18
@@ -53,6 +55,7 @@ namespace monoconta
             companies = this.Companies;
             hedgeFunds = this.HedgeFunds;
             rentSwapContracts = this.RentSwapContracts;
+            prevGoldRegister = this.GoldRegister;
             admin = this.admin;
             name = this.gameName;
             irb = this.IRB;
@@ -115,6 +118,8 @@ namespace monoconta
                     ReadEntities(game.Element("entities")); // after this there are no missing links!!!
                     ReadProperties(game.Element("properties"), propertiesTemplate);
                     ReadContracts(game.Element("contracts"));
+                    ReadGold(game.Element("gold"));
+
                     watch.Stop();
                     Console.WriteLine("Completed in {0:F2} ms!", watch.Elapsed.TotalMilliseconds);
                 }
@@ -135,7 +140,7 @@ namespace monoconta
             this._m = config.Element("m").Value.ToDouble();
             this.startbonus = config.Element("startbonus").Value.ToDouble();
             this.depocounter = config.Element("depocounter").Value.ToInt();
-            if (config.Elements().Any(e=>e.Name=="shortsellratefactor18"))
+            if (config.Elements().Any(e => e.Name == "shortsellratefactor18"))
                 this.SSFR18 = config.Element("shortsellratefactor18").Value.ToDouble();
             else
                 this.SSFR18 = 19.4;
@@ -222,13 +227,38 @@ namespace monoconta
 
                 RentSwapContract contract = new RentSwapContract(
                     name, longParty, shortParty, propID, fixedRent, roundrentmulti, totalrounds
-                );
-                contract.ID = swapID;
-                contract.RoundsPassed = roundspassed;
-                contract.ContractEntries = entries;
+                )
+                {
+                    ID = swapID,
+                    RoundsPassed = roundspassed,
+                    ContractEntries = entries
+                };
                 this.RentSwapContracts.Add(contract);
             }
             Console.WriteLine("\tContracts loaded");
+        }
+
+        private void ReadGold(XElement goldElement)
+        {
+            GoldManager._initialHardReadPrice = goldElement.Element("price")?.Value.ToDouble() ?? 1500;
+
+            double readDelta(string str, double def) => goldElement.Element("deltas")?.Element(str)?.Value.ToDouble() ?? def;
+            GoldManager.DownDeltaMax = readDelta("downmax", -9);
+            GoldManager.DownDeltaMin = readDelta("downmin", -4);
+            GoldManager.UpDeltaMin = readDelta("upmin", 6);
+            GoldManager.UpDeltaMax = readDelta("upmax", 16);
+            GoldManager.MaximumFiveDeviation = readDelta("fiverange", 65);
+
+            foreach (var entryElement in goldElement.Element("register").Elements("entry"))
+            {
+                int id = entryElement.Attribute("id").Value.ToInt();
+                double quantity = entryElement.Element("qty").Value.ToDouble();
+
+                Entity owner = GetAllEntities().FirstOrDefault(e => e.ID == id);
+
+                GoldRegister.Add(owner, quantity);
+            }
+            Console.WriteLine("\tGold register loaded");
         }
 
         private void ResolveMissingLinks()
@@ -322,6 +352,7 @@ namespace monoconta
                 {
                     fund.PreviousShareValues.Add(pair.Attribute("index").Value.ToInt(), pair.Value.ToDouble());
                 }
+                
 
                 // new money:
                 Dictionary<int, int> unresolvedNewMoney = new Dictionary<int, int>();
@@ -349,13 +380,13 @@ namespace monoconta
                 unresolvedSharebook.Add(shareHolderID, shares);
             }
             this.UnresolvedShareholdingDictionary.Add(company, unresolvedSharebook);
-            Dictionary<KeyValuePair<int,int>, int> unresolvedShortSellingBook = new Dictionary<KeyValuePair<int, int>, int>();
+            Dictionary<KeyValuePair<int, int>, int> unresolvedShortSellingBook = new Dictionary<KeyValuePair<int, int>, int>();
             foreach (var shortSellerElement in shareholderStructure.Elements("shortseller"))
             {
                 int shortSellerID = shortSellerElement.Attribute("id").Value.ToInt();
                 int shareLenderID = shortSellerElement.Element("lender").Value.ToInt();
                 int shareCount = shortSellerElement.Element("shares").Value.ToInt();
-                unresolvedShortSellingBook.Add(new KeyValuePair<int,int>(shortSellerID, shareLenderID), shareCount);
+                unresolvedShortSellingBook.Add(new KeyValuePair<int, int>(shortSellerID, shareLenderID), shareCount);
             }
             this.UnresolvedShortSellingDictionary.Add(company, unresolvedShortSellingBook);
 
