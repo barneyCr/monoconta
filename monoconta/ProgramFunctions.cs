@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using monoconta.Contracts;
 using static monoconta.HedgeFund;
 
 namespace monoconta
@@ -923,7 +924,7 @@ namespace monoconta
         public static void RunGoldman()
         {
             Console.WriteLine("Current price: {0:C}/kg", GoldManager.CurrentGoldPrice);
-            Console.WriteLine("<buy>, <sell>, <prices>");
+            Console.WriteLine("<buy>, <sell>, <prices>, <params>");
             string command = Console.ReadLine();
             if (command == "buy" || command == "sell")
             {
@@ -962,7 +963,24 @@ namespace monoconta
                 {
                     Console.WriteLine("{0}. {1:C}", i++, price);
                 }
+            }
+            else if (command.ToLower() == "params")
+            {
+                Console.WriteLine("\tDown delta max: " + GoldManager.DownDeltaMax);
+                Console.WriteLine("\tDown delta min: " + GoldManager.DownDeltaMin);
+                Console.WriteLine("\tUp delta min:    " + GoldManager.UpDeltaMin);
+                Console.WriteLine("\tUp delta max:    " + GoldManager.UpDeltaMax);
+                Console.WriteLine("\tMax five range:  " + GoldManager.MaximumFiveDeviation);
 
+                Console.Write("Change params? ");
+                if (Console.ReadLine() == "yes")
+                {
+                    ChangeGoldDeltas();
+                }
+            }
+            else if (command.ToLower () == "reset")
+            {
+                GoldManager.ResetPrices();
             }
         }
     }

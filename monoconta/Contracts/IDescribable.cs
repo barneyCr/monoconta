@@ -1,5 +1,5 @@
 ﻿using System;
-namespace monoconta
+namespace monoconta.Contracts
 {
     public interface IDescribable
     {

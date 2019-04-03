@@ -130,13 +130,23 @@ namespace monoconta
             if (GetSharesOwnedBy(holder, true) >= shareCount)
             {
                 this.ShareholderStructure[holder] -= shareCount;
-                if (ShareholderStructure[holder] < 1 && !managerCondition)
+                if (ShareholderStructure[holder] < 1 && !managerCondition) {
                     ShareholderStructure.Remove(holder);
+                    if (this is HedgeFund)
+                    {
+                        ((HedgeFund)this).CompensationRules.Remove(holder);
+                    }
+                }
                 holder.Money += shareCount * sharePrice;
                 if (ShareholderStructure.ContainsKey(buyer))
                     ShareholderStructure[buyer] += shareCount;
-                else
+                else {
                     ShareholderStructure.Add(buyer, shareCount);
+                    if (this is HedgeFund)
+                    {
+                        (this as HedgeFund).CompensationRules.Add(buyer, ((HedgeFund)this).DefaultCompensationRules);
+                    }
+                }
                 buyer.Money -= shareCount * sharePrice;
             }
         }

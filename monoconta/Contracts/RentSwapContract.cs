@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace monoconta
+namespace monoconta.Contracts
 {
     class RentSwapContract : IDescribable
     {

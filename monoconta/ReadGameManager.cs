@@ -7,6 +7,7 @@ using System.Text;
 using System.Diagnostics;
 using System.Threading;
 using System.Xml;
+using monoconta.Contracts;
 
 namespace monoconta
 {

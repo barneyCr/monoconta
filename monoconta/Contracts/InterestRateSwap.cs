@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace monoconta
+namespace monoconta.Contracts
 {
     class InterestRateSwap : Contract, IDescribable
     {

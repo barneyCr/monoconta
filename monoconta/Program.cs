@@ -4,6 +4,7 @@ using System.Linq;
 using System.Diagnostics;
 using static monoconta.HedgeFund;
 using System.Threading;
+using monoconta.Contracts;
 
 #pragma warning disable RECS0063 // Warns when a culture-aware 'StartsWith' call is used by default.
 

@@ -30,6 +30,11 @@ namespace monoconta
 
         }
 
+        public static void ResetPrices()
+        {
+            InitializeNew(GoldRegister);
+        }
+
         public static void InitializeNew(Dictionary<Entity, double> prevRegister)
         {
             if (prevRegister != null)

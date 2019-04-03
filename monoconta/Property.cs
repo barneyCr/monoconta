@@ -57,7 +57,9 @@ namespace monoconta
                 );
                 double numerator = 0;
                 bool canBeBuiltOn = CanBeBuiltOn;
-                if (Neighbourhood.Spaces == 2)
+                if (Neighbourhood.Spaces == 1)
+                    numerator = 12.5;
+                else if (Neighbourhood.Spaces == 2)
                     numerator = owned == 2 || canBeBuiltOn ? 16 : 11;
                 else if (Neighbourhood.Spaces >= 3)
                 {
@@ -74,7 +76,11 @@ namespace monoconta
                         numerator = 17.0;
                 }
                 //}
-                double denominator = 6.35 + this.Neighbourhood.Spaces * 11 / 6; // 1.8333
+                double denominator = 6.35 + Math.Max(2, this.Neighbourhood.Spaces * 11.0 / 6); // 1.8333;
+                // poate ar fi mai bine sa punem minim = 4 sau 4.25; 1 spatiu = 1,833, 2 spatii = 3,666, 3 spatii = 5,50
+                // ca sa afectam parcarea
+                // si ca sa reducem cartierele maro si indigo
+                // care oare sunt prea avantajate?
                 double r = ResidentialRent * BalanceSheetValueMultiplier;
                 return (numerator / denominator) * (r < BuyPrice ? BuyPrice : r); // todo
             } 
@@ -96,8 +102,11 @@ namespace monoconta
                     {
                         overallRent += Rents[5] * m;
                     }
-                    double incompleteRent = Rents[Appartments] * m;
-                    overallRent += incompleteRent;
+                    if (Appartments > 0)
+                    {
+                        double incompleteRent = Rents[Appartments] * m;
+                        overallRent += incompleteRent;
+                    }
                     return overallRent;
                 }
                 else { return 0; }

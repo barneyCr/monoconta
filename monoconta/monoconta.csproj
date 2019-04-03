@@ -53,15 +53,19 @@
     <Compile Include="Contract.cs" />
     <Compile Include="ProgramRun.cs" />
     <Compile Include="ProgramFunctions.cs" />
-    <Compile Include="InterestRateSwap.cs" />
-    <Compile Include="RentSwapContract.cs" />
-    <Compile Include="IDescribable.cs" />
     <Compile Include="GoldManager.cs" />
+    <Compile Include="Contracts\InterestRateSwap.cs" />
+    <Compile Include="Contracts\RentSwapContract.cs" />
+    <Compile Include="Contracts\IDescribable.cs" />
+    <Compile Include="Contracts\RepoContract.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Contracts\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
