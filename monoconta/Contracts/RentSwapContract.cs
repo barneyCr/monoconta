@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace monoconta.Contracts
 {
-    class RentSwapContract : IDescribable
+    class RentSwapContract : IDescribable, ITwoPartyContract
     {
         /// <summary>
         /// Usually the one who sells insurance (variable rent)

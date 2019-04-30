@@ -22,7 +22,7 @@ namespace monoconta
 
         public static IEnumerable<IDescribable> ContractCollection
         {
-            get => InterestRateSwapContracts.Cast<IDescribable>().Union(RentSwapContracts);
+            get => InterestRateSwapContracts.Cast<IDescribable>().Union(RentSwapContracts).Union(RentInsuranceContracts);
         }
 
         public static List<Player> Players;
@@ -34,11 +34,12 @@ namespace monoconta
 
         public static List<InterestRateSwap> InterestRateSwapContracts;
         public static List<RentSwapContract> RentSwapContracts;
+        public static List<RentInsuranceContract> RentInsuranceContracts;
 
         public static double InterestRateBase = 1;
         public static string GameName = "";
         public static Player admin;
-        public static bool showIDs = false;
+        public static bool showIDs = true;
 
         public static double _m_ = (double)5 / 3;
         public static double startBonus = 2000;
@@ -50,7 +51,7 @@ namespace monoconta
         public static DiceManager DiceManager;
 
         static Random rand = new Random();
-        static bool financedeficit = true;
+        public static bool financedeficit = true;
 
         public static void Main(string[] args)
         {
@@ -80,7 +81,7 @@ namespace monoconta
 
                 ReadGameManager readManager = new ReadGameManager(fileName, Console.ReadLine() == "yes");
                 readManager.Read(Properties);
-                readManager.Integrate(out Players, out Companies, out HedgeFunds, out RentSwapContracts, out goldRegToBeRead, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
+                readManager.Integrate(out Players, out Companies, out HedgeFunds, out RentSwapContracts, out RentInsuranceContracts, out goldRegToBeRead, out admin, out GameName, out InterestRateBase, out _m_, out startBonus, out depocounter, out SSFR18);
                 SGManager = new SaveGameManager(GameName, fileName);
             }
             else
@@ -99,6 +100,7 @@ namespace monoconta
                 HedgeFunds = new List<HedgeFund>();
 
                 RentSwapContracts = new List<RentSwapContract>();
+                RentInsuranceContracts = new List<RentInsuranceContract>();
 
                 Console.WriteLine("Done!\n\n");
             }

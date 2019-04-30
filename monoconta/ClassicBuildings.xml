@@ -18,7 +18,7 @@
         <neighbourhood name="Indigo" nid="8" spaces="2" />
         <neighbourhood name="Transportation" nid="9" spaces="4" />
         <neighbourhood name="Industrial" nid="10" spaces="2" />
-        <neighbourhood name="Spaces" nid="11" spaces="1" />
+        <neighbourhood name="Extras" nid="11" spaces="1" />
     </neighbourhoods>
     <properties>
         <property pid="1">

@@ -50,14 +50,16 @@
     <Compile Include="Extensions.cs" />
     <Compile Include="DiceManager.cs" />
     <Compile Include="ShortSellingStructure.cs" />
-    <Compile Include="Contract.cs" />
     <Compile Include="ProgramRun.cs" />
     <Compile Include="ProgramFunctions.cs" />
     <Compile Include="GoldManager.cs" />
     <Compile Include="Contracts\InterestRateSwap.cs" />
     <Compile Include="Contracts\RentSwapContract.cs" />
     <Compile Include="Contracts\IDescribable.cs" />
-    <Compile Include="Contracts\RepoContract.cs" />
+    <Compile Include="Contracts\RentInsuranceContract.cs" />
+    <Compile Include="Contracts\Contract.cs" />
+    <Compile Include="Contracts\Bond.cs" />
+    <Compile Include="Contracts\ITwoPartyContract.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassicBuildings.xml">

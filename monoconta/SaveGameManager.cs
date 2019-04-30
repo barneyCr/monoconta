@@ -26,6 +26,7 @@ namespace monoconta
         private List<Neighbourhood> Neighbourhoods;
         private List<InterestRateSwap> InterestRateSwaps;
         private List<RentSwapContract> RentSwaps;
+        private List<RentInsuranceContract> RentInsurances;
 
         private double IRB;
         private Player admin;
@@ -35,7 +36,7 @@ namespace monoconta
 
         internal void set(
             List<Player> players, List<Company> companies, List<HedgeFund> hedgeFunds,
-            List<Property> properties, List<Neighbourhood> neighbourhoods, List<RentSwapContract> rentSwaps,
+            List<Property> properties, List<Neighbourhood> neighbourhoods, List<RentSwapContract> rentSwaps, List<RentInsuranceContract> rentInsurances,
             double irb, Player admin, double m, double bonus, int depocounter, double ssfr18)
         {
             this.Players = players;
@@ -45,6 +46,7 @@ namespace monoconta
             this.Neighbourhoods = neighbourhoods;
             //this.InterestRateSwaps = interestRateSwaps;
             this.RentSwaps = rentSwaps;
+            this.RentInsurances = rentInsurances;
             this.IRB = irb;
             this.admin = admin;
             this._m = m;
@@ -168,12 +170,19 @@ namespace monoconta
 
                         xml.WriteStartElement("history");
                         {
-                            foreach (var item in fund.PreviousShareValues)
+                            foreach (var shareValue in fund.PreviousShareValues)
                             {
-                                xml.WriteStartElement("pair");
-                                xml.WriteAttributeString("index", item.Key.ToString());
-                                xml.WriteString(item.Value.ToF3Double());
-                                xml.WriteEndElement(); // pair
+                                xml.WriteStartElement("sharevalue");
+                                xml.WriteAttributeString("index", shareValue.Key.ToString());
+                                xml.WriteString(shareValue.Value.ToF3Double());
+                                xml.WriteEndElement(); // sharevalue
+                            }
+                            foreach (var divPayment in fund.PreviousDividendValues)
+                            {
+                                xml.WriteStartElement("divvalue");
+                                xml.WriteAttributeString("index", divPayment.Key.ToString());
+                                xml.WriteString(divPayment.Value.ToF3Double());
+                                xml.WriteEndElement(); // divvalue
                             }
                         }
                         xml.WriteEndElement(); // history
@@ -279,7 +288,7 @@ namespace monoconta
             {
                 xml.WriteStartElement("debt");
                 xml.WriteAttributeString("to", liab.Key.ID.ToString());
-                xml.WriteElementString("fullname", liab.Key.Name.ToString());
+                xml.WriteElementString("fullname", liab.Key.Name);
                 xml.WriteElementString("value", liab.Value.ToF3Double());
                 xml.WriteEndElement();
             }
@@ -331,6 +340,49 @@ namespace monoconta
                 xml.WriteEndElement(); // rentswap
             }
             xml.WriteEndElement(); // rentswaps
+
+            xml.WriteStartElement("rentinsurances");
+            foreach (var insurance in this.RentInsurances)
+            {
+                xml.WriteStartElement("rentinsurance");
+                xml.WriteAttributeString("id", insurance.ID.ToString());
+                {
+                    xml.WriteElementString("name", insurance.Name);
+                    {
+                        xml.WriteStartElement("longparty");
+                        xml.WriteAttributeString("id", insurance.InsurerLongParty.ID.ToString());
+                        xml.WriteAttributeString("name", insurance.InsurerLongParty.Name);
+                        xml.WriteEndElement(); // longparty
+                    }
+                    {
+                        xml.WriteStartElement("shortparty");
+                        xml.WriteAttributeString("id", insurance.InsuredShortParty.ID.ToString());
+                        xml.WriteAttributeString("name", insurance.InsuredShortParty.Name);
+                        xml.WriteEndElement(); // shortparty
+                    }
+                    xml.WriteElementString("propID", insurance.PropertyID.ToString());
+                    xml.WriteElementString("premium", insurance.Terms.Sum.ToF3Double());
+                    xml.WriteElementString("insuredSum", insurance.InsuredSum.ToF3Double());
+                    xml.WriteElementString("roundspassed", insurance.RoundsPassed.ToString());
+                    xml.WriteElementString("totalrounds", insurance.Terms.Rounds.ToString());
+                    xml.WriteStartElement("entries");
+                    {
+                        foreach (var entry in insurance.ContractEntries)
+                        {
+                            xml.WriteStartElement("entry");
+                            xml.WriteAttributeString("no", entry.Key.ToString());
+                            xml.WriteElementString("premium", entry.Value.ObjectTransferred.ToF3Double());
+                            xml.WriteElementString("reimbursement", entry.Value.ContractElement.ToF3Double());
+                            xml.WriteElementString("msg", entry.Value.Message);
+                            xml.WriteEndElement();//entry
+                        }
+                    }
+                    xml.WriteEndElement();//entries
+                }
+                xml.WriteEndElement(); // rentinsurance
+            }
+            xml.WriteEndElement(); // rentinsurances
+
 
             xml.WriteStartElement("irswaps");
             //foreach (var swap in this.InterestRateSwaps)

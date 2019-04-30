@@ -34,6 +34,7 @@ namespace monoconta
         private List<Property> Properties = new List<Property>();
         //private List<Neighbourhood> Neighbourhoods = new List<Neighbourhood>();
         private List<RentSwapContract> RentSwapContracts = new List<RentSwapContract>();
+        private List<RentInsuranceContract> RentInsuranceContracts = new List<RentInsuranceContract>();
         private Dictionary<Entity, double> GoldRegister = new Dictionary<Entity, double>();
 
         private string gameName;
@@ -47,6 +48,7 @@ namespace monoconta
             out List<Player> players, out List<Company> companies,
             out List<HedgeFund> hedgeFunds,
             out List<RentSwapContract> rentSwapContracts,
+            out List<RentInsuranceContract> rentInsuranceContracts,
             out Dictionary<Entity, double> prevGoldRegister,
             out Player admin, out string name,
             out double irb, out double m,
@@ -57,6 +59,7 @@ namespace monoconta
             companies = this.Companies;
             hedgeFunds = this.HedgeFunds;
             rentSwapContracts = this.RentSwapContracts;
+            rentInsuranceContracts = this.RentInsuranceContracts;
             prevGoldRegister = this.GoldRegister;
             admin = this.admin;
             name = this.gameName;
@@ -238,6 +241,48 @@ namespace monoconta
                 };
                 this.RentSwapContracts.Add(contract);
             }
+
+            this.RentInsuranceContracts = new List<RentInsuranceContract>();
+            foreach (var rentInsuranceElement in xElement.Element("rentinsurances").Elements("rentinsurance"))
+            {
+                Func<string, string> read = str => readerFunc(rentInsuranceElement, str);
+                //Action<Func<string,string>, string> changeElem = (func, el) => read = (str) => readerFunc(rentSwapElement.Element(el), str);
+                int insuranceID = rentInsuranceElement.Attribute("id").Value.ToInt();
+                string name = read("name");
+                int propID = read("propID").ToInt();
+                double premium = read("premium").ToDouble();
+                double insuredSum = read("insuredSum").ToDouble();
+                int roundspassed = read("roundspassed").ToInt();
+                int totalrounds = read("totalrounds").ToInt();
+
+                int insurerPartyID = rentInsuranceElement.Element("longparty").Attribute("id").Value.ToInt();
+                int insuredPartyID = rentInsuranceElement.Element("shortparty").Attribute("id").Value.ToInt();
+
+                Dictionary<int, ContractRecord> entries = new Dictionary<int, ContractRecord>();
+                foreach (var entryElem in rentInsuranceElement.Element("entries").Elements("entry"))
+                {
+                    read = str => readerFunc(entryElem, str);
+                    int entryNo = entryElem.Attribute("no").Value.ToInt();
+                    double premiumPaid = read("premium").ToDouble();
+                    double reimbursementPaid = read("reimbursement").ToDouble();
+                    string msg = read("msg");
+                    ContractRecord record = new ContractRecord(premiumPaid, reimbursementPaid, msg);
+                    entries.Add(entryNo, record);
+                }
+
+                Entity insurerParty = GetAllEntities().FirstOrDefault(e => e.ID == insurerPartyID);
+                Entity insuredParty = GetAllEntities().FirstOrDefault(e => e.ID == insuredPartyID);
+
+                RentInsuranceContract contract = new RentInsuranceContract(
+                    name, insurerParty, insuredParty, propID, premium, insuredSum, totalrounds
+                )
+                {
+                    ID = insuranceID,
+                    RoundsPassed = roundspassed,
+                    ContractEntries = entries
+                };
+                this.RentInsuranceContracts.Add(contract);
+            }
             Console.WriteLine("\tContracts loaded");
         }
 
@@ -380,11 +425,16 @@ namespace monoconta
 
                 //previous shares' values:
                 XElement historyElem = fundElement.Element("history");
-                foreach (var pair in historyElem.Elements("pair"))
+                IEnumerable<XElement> shareValueElements = historyElem.Elements("pair").Any() ? historyElem.Elements("pair") : historyElem.Elements("sharevalue");
+                foreach (var shareValue in shareValueElements)
                 {
-                    fund.PreviousShareValues.Add(pair.Attribute("index").Value.ToInt(), pair.Value.ToDouble());
+                    fund.PreviousShareValues.Add(shareValue.Attribute("index").Value.ToInt(), shareValue.Value.ToDouble());
                 }
-                
+                foreach (var divValue in historyElem.Elements("divvalue"))
+                {
+                    fund.PreviousDividendValues.Add(divValue.Attribute("index").Value.ToInt(), divValue.Value.ToDouble());
+                }
+
 
                 // new money:
                 Dictionary<int, int> unresolvedNewMoney = new Dictionary<int, int>();
@@ -418,7 +468,7 @@ namespace monoconta
                 int shortSellerID = shortSellerElement.Attribute("id").Value.ToInt();
                 int shareLenderID = shortSellerElement.Element("lender").Value.ToInt();
                 int shareCount = shortSellerElement.Element("shares").Value.ToInt();
-                unresolvedShortSellingBook.Add(new KeyValuePair<int, int>(shortSellerID, shareLenderID), shareCount);
+                unresolvedShortSellingBook.Add(new KeyValuePair<int, int>(shareLenderID, shortSellerID), shareCount);
             }
             this.UnresolvedShortSellingDictionary.Add(company, unresolvedShortSellingBook);
 

@@ -14,7 +14,7 @@ namespace monoconta
         {
             get
             {
-                if (ShareCount > 1)
+                if (ShareCount >= 1)
                     return (TotalAssetValue - TotalLiabilitiesValue + Money) / ShareCount;
                 return ___value;
             }
@@ -22,9 +22,9 @@ namespace monoconta
 
         public Company(string name, Entity shareholder, double capital, double initialValue = 10)
         {
-            if (capital < 100)
+            if (capital < 1)
             {
-                throw new Exception("Capital must be a minimum of $100.");
+                throw new Exception("Capital must be a minimum of $1.");
             }
             if (initialValue < .001)
             {
@@ -77,7 +77,7 @@ namespace monoconta
 
         public override void PrintStructure()
         {
-            Console.WriteLine("\nShare value: {0:C2}\nShare count: {1}\nMarket value: {2:C}", this.ShareValue, this.ShareCount, this.ShareValue * this.ShareCount);
+            Console.WriteLine("\nShare value: {0:C3}\nShare count: {1}\nMarket value: {2:C}", this.ShareValue, this.ShareCount, this.ShareValue * this.ShareCount);
             Console.WriteLine("Shareholders:");
             foreach (var shareholder in this.ShareholderStructure)
             {
@@ -130,7 +130,8 @@ namespace monoconta
             if (GetSharesOwnedBy(holder, true) >= shareCount)
             {
                 this.ShareholderStructure[holder] -= shareCount;
-                if (ShareholderStructure[holder] < 1 && !managerCondition) {
+                if (ShareholderStructure[holder] < 1 && !managerCondition)
+                {
                     ShareholderStructure.Remove(holder);
                     if (this is HedgeFund)
                     {
@@ -140,7 +141,8 @@ namespace monoconta
                 holder.Money += shareCount * sharePrice;
                 if (ShareholderStructure.ContainsKey(buyer))
                     ShareholderStructure[buyer] += shareCount;
-                else {
+                else
+                {
                     ShareholderStructure.Add(buyer, shareCount);
                     if (this is HedgeFund)
                     {
@@ -151,7 +153,7 @@ namespace monoconta
             }
         }
 
-        internal void IssueDividend(double amountPerShare)
+        internal virtual void IssueDividend(double amountPerShare)
         {
             foreach (var shareholder in this.ShareholderStructure)
             {
@@ -168,6 +170,40 @@ namespace monoconta
             }
             this.Money -= amountPerShare * this.ShareCount;
         }
+
+        internal bool PermaDividendOn { get; private set; }
+        internal double PermaDividendPerShare { get; private set; }
+        internal void StartPermaDividend(double amountPerShare)
+        {
+            this.PermaDividendOn = true;
+            this.PermaDividendPerShare = amountPerShare;
+        }
+        internal void StopPermaDividend()
+        {
+            this.PermaDividendOn = false;
+        }
+
+        public override void OnPassedStart()
+        {
+            base.OnPassedStart();
+            if (this.PermaDividendOn)
+            {
+                IssueDividend(this.PermaDividendPerShare);
+                if (Money < 0)
+                {
+                    Console.WriteLine("Current account deficit due to perma dividend: {0:C}, company {1}", Money, this.Name);
+                    if (MainClass.financedeficit)
+                    {
+                        Console.WriteLine("Financed deficit automatically by bank loan");
+                        this.LiabilityTowardsBank += -Money;
+                        this.Money = 0;
+                    }
+                }
+            }
+            // to-do (DONE) perma div
+            // to-do (DONE) hedge fund dividend fix
+        }
+
         public int GetSharesOwnedBy(Entity shareholder, bool excludeSharesLent)
         {
             if (this.ShareholderStructure.ContainsKey(shareholder))

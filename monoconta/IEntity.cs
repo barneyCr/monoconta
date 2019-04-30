@@ -179,6 +179,12 @@ namespace monoconta
                 swap.Call();
             }
 
+            ManageRentSwaps();
+            ManageRentInsurances();
+        }
+
+        private void ManageRentSwaps()
+        {
             List<RentSwapContract> rentContractsToRemove = new List<RentSwapContract>();
             foreach (var rentSwap in MainClass.RentSwapContracts.Where(swap => swap.ShortParty == this))
             {
@@ -199,6 +205,29 @@ namespace monoconta
                 }
             }
             MainClass.RentSwapContracts.RemoveAll(rsw => rentContractsToRemove.Contains(rsw));
+        }
+        private void ManageRentInsurances()
+        {
+            List<RentInsuranceContract> rentInsurancesToRemove = new List<RentInsuranceContract>();
+            foreach (var rentInsurance in MainClass.RentInsuranceContracts.Where(swap => swap.InsuredShortParty == this))
+            {
+                if (!rentInsurance.PassedStartEvent())
+                {
+                    rentInsurance.DescribeSpecific();
+                    Console.WriteLine("\n\tContract {0} has approached the end. Reenact?", rentInsurance.Name);
+                    if (Console.ReadLine() != "yes")
+                    {
+                        rentInsurancesToRemove.Add(rentInsurance);
+                        Console.WriteLine("Contract terminated.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Contract re-enacted for another {0} rounds", rentInsurance.Terms.Rounds);
+                        rentInsurance.Terms.Rounds *= 2;
+                    }
+                }
+            }
+            MainClass.RentInsuranceContracts.RemoveAll(rsw => rentInsurancesToRemove.Contains(rsw));
         }
 
         public virtual void RegisterBook() {
@@ -295,7 +324,7 @@ namespace monoconta
                                        select new { Company = comp, Information = shortDict };
             foreach (var item in particularSharesLent)
             {
-                Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
+                Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Value.Name, item.Information.Value * item.Company.ShareValue);
                 // shares lent value added below, in shares in companies
             }
 
@@ -372,7 +401,7 @@ namespace monoconta
                     Console.WriteLine("\t[{0}] {1} in {2} neighbourhood, valued at {3:C}\t{4}", 
                                       ppty.ID, 
                                       ppty.Name, 
-                                      MainClass.Neighbourhoods.First(n=>ppty.ParentID==n.NID).Name, 
+                                      ppty.Neighbourhood.Name, 
                                       ppty.Value,
                                       ppty.CanBeBuiltOn ? (ppty.HasBuildings ? "(authorized)" : "NEWLY AUTHORIZED"): "");
                 }

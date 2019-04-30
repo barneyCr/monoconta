@@ -145,7 +145,6 @@ namespace monoconta
             {
                 Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.NetWorth.ToString("C").PadLeft(25));
             }
-
             Console.WriteLine("\nBy total assets: ");
             i = 0;
             foreach (var entity in collection.OrderByDescending(p => p.TotalAssetValue + p.Money))
@@ -157,6 +156,12 @@ namespace monoconta
             foreach (var entity in collection.OrderByDescending(p => p.TotalLiabilitiesValue))
             {
                 Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.TotalLiabilitiesValue.ToString("C").PadLeft(25));
+            }
+            Console.WriteLine("\nBy bank debt: ");
+            i = 0;
+            foreach (var entity in collection.OrderByDescending(p => p.LiabilityTowardsBank))
+            {
+                Console.WriteLine("\t{0}. {1} {2}", ++i, entity.Name.PadRight(30), entity.LiabilityTowardsBank.ToString("C").PadLeft(25));
             }
             Console.WriteLine("\nBy total cash: ");
             i = 0;
@@ -234,14 +239,62 @@ namespace monoconta
         {
             if (ByID(ReadInt("Fund ID: ")) is HedgeFund fund)
             {
-                Console.WriteLine("Round 0: {0:C}", fund.PreviousShareValues[0]);
+                //var totalReturnValues = from shareValue in fund.PreviousShareValues
+                //                        join divValue in fund.PreviousDividendValues
+                //                            on shareValue.Key equals divValue.Key
+                //                        select new { shareValue.Key, Value = shareValue.Value + divValue.Value };
 
-                for (int i = 1; i < fund.PreviousShareValues.Count; i++)
+                //Dictionary<int, double> totalReturnDictionary =
+                //totalReturnValues.ToDictionary(a => a.Key, a => a.Value);
+
+                Dictionary<int, double> totalReturnDictionary = new Dictionary<int, double>();
+
+                foreach (var item in fund.PreviousShareValues)
                 {
-                    double last = fund.PreviousShareValues[i - 1];
-                    double current = fund.PreviousShareValues[i];
+                    totalReturnDictionary.Add(item.Key, item.Value);
+                    if (fund.PreviousDividendValues.ContainsKey(item.Key))
+                        totalReturnDictionary[item.Key] += fund.PreviousDividendValues[item.Key];
+                }
+                foreach (var item in fund.PreviousDividendValues.Where(k => !fund.PreviousShareValues.ContainsKey(k.Key)))
+                {
+                    totalReturnDictionary.Add(item.Key, fund.PreviousShareValues[item.Key - 1] + item.Value);
+                    // this is for the current round, for which the price is not fully set, 
+                    // but we take the dividend into account
+                }
+
+                Console.WriteLine("Round 0: {0:C}", totalReturnDictionary[0]);
+
+                for (int i = 1; i < totalReturnDictionary.Count; i++)
+                {
+                    double last = totalReturnDictionary[i - 1];
+                    double current = totalReturnDictionary[i];
                     string sign = current >= last ? "+" : "-";
-                    Console.WriteLine("Round {0}: {1:C}\t{2} {3:P2}", i.ToString().PadLeft(3), fund.PreviousShareValues[i].ToPaddedLeftCashString(10), sign, Math.Abs(current/last-1));
+                    Console.WriteLine("Round {0}: {1:C}\t{2} {3:P2}", i.ToString().PadLeft(3), current.ToPaddedLeftCashString(10), sign, Math.Abs(current / last - 1));
+                }
+            }
+        }
+
+        private static void RunPermaDivManager()
+        {
+            if (ByID(ReadInt("Company ID: ")) is Company company)
+            {
+                Console.WriteLine("Perma-div is currently: {0:C}/share, state {1}", company.PermaDividendPerShare, company.PermaDividendOn ? "ON" : "OFF");
+                Console.Write("Switch state?");
+                if (Console.ReadLine() == "yes")
+                {
+                    if (company.PermaDividendOn)
+                        company.StopPermaDividend();
+                    else
+                    {
+                        company.StartPermaDividend(company.PermaDividendPerShare);
+
+                        Console.Write("Modify amount? yes/no: ");
+                        if (Console.ReadLine() == "yes")
+                        {
+                            double amount = ReadDouble("Amount: ");
+                            company.StartPermaDividend(amount);
+                        }
+                    }
                 }
             }
         }
@@ -339,7 +392,7 @@ namespace monoconta
             if (payer.Money < 0 && financedeficit)
             {
                 // let's see how we can finance this
-                Console.WriteLine("Debitor is out of cash. \n\t>Loan (bank, interplayer) [loan]\n\t>Share transfer [sellshares]");
+                Console.WriteLine("Debitor {0} is out of cash. \n\t>Loan (bank, interplayer) [loan]\n\t>Share transfer [sellshares]", payer.Name);
                 string variant = Console.ReadLine();
                 if (variant == "loan")
                 {
@@ -696,17 +749,59 @@ namespace monoconta
         private static void DeleteEntity()
         {
             Entity entity = ByID(ReadInt("Entity ID: "));
+
+            if (HedgeFunds.Any(fund => fund.Manager == entity) || (entity is Player && (entity as Player).PeggedCompanies.Any()))
+            {
+                Console.WriteLine("{0} is a fund manager or has pegged a company to its name," +
+                    "\nresolve before eliminating entity");
+                return;
+            }
+
             if (entity is Company)
                 Companies.Remove(entity as Company);
             else if (entity is HedgeFund)
                 HedgeFunds.Remove(entity as HedgeFund);
+            Console.WriteLine("Removed from collection");
 
             foreach (var player in Players)
             {
                 if (player.PeggedCompanies.Contains(entity))
+                {
                     player.PeggedCompanies.Remove(entity as Company);
+                    Console.WriteLine("Removed pegging");
+                }
                 if (player.Liabilities.ContainsKey(entity))
+                {
                     player.Liabilities.Remove(entity);
+                    Console.WriteLine("Removed liabilities' book");
+                }
+            }
+
+            GoldManager.GoldRegister.Remove(entity);
+            Console.WriteLine("Removed from gold register");
+
+            List<ITwoPartyContract> contractsToBeRemoved = new List<ITwoPartyContract>();
+            foreach (var contract in ContractCollection.Cast<ITwoPartyContract>())
+            {
+                if (contract.LongParty == entity || contract.ShortParty == entity)
+                    contractsToBeRemoved.Add(contract);
+            }
+            RentSwapContracts.RemoveAll(c => contractsToBeRemoved.Contains(c));
+            RentInsuranceContracts.RemoveAll(c => contractsToBeRemoved.Contains(c));
+            Console.WriteLine("Removed contracts implicating entity");
+
+            foreach (var property in Properties)
+            {
+                if (property.OptionOwner == entity)
+                {
+                    property.OptionOwner = null;
+                    Console.WriteLine("Removed real estate option contract");
+                }
+                if (property.Owner == entity)
+                {
+                    property.Owner = null;
+                    Console.WriteLine("Removed real estate ownership");
+                }
             }
         }
 
@@ -844,10 +939,15 @@ namespace monoconta
                     {
                         Console.WriteLine(rentswap.DescribeGeneral());
                     }
+                    foreach (var rentIns in RentInsuranceContracts)
+                    {
+                        Console.WriteLine(rentIns.DescribeGeneral());
+                    }
                 }
                 else
                 {
-                    var contract = InterestRateSwapContracts.Cast<IDescribable>().Union(RentSwapContracts).FirstOrDefault(c => c.ID == int.Parse(command));
+                    int id = ReadInt("Contract ID: ");
+                    var contract = InterestRateSwapContracts.Cast<IDescribable>().Union(RentSwapContracts).Union(RentInsuranceContracts).FirstOrDefault(c => c.ID == id);
                     if (contract == null)
                     {
                         Console.WriteLine("Contract with that ID does not exist");
@@ -860,7 +960,8 @@ namespace monoconta
             {
                 Console.WriteLine("Available types: " +
                     "\n\tlock interest rate swap (irswap)" +
-                    "\n\trent swap (rentswap)");
+                    "\n\trent swap (rentswap)" +
+                    "\n\trent insurance (rentins)");
                 readCommand();
                 if (command == "irswap")
                 {
@@ -893,6 +994,22 @@ namespace monoconta
 
                     RentSwapContract contract = new RentSwapContract(name, longParty, shortParty, propID, fixedRent, rentMulti, rounds);
                     RentSwapContracts.Add(contract);
+                    Console.WriteLine("Contract {0} created", contract.ID);
+                }
+                else if (command=="rentins")
+                {
+                    Console.Write("Name: ");
+                    string name = Console.ReadLine();
+                    Entity longParty = ByID(ReadInt("Long (insurer) party: "));
+                    Entity shortParty = ByID(ReadInt("Short (insured) party: "));
+                    double premium = ReadDouble("Premium: ");
+                    double insuredSum = ReadDouble("Insured sum: ");
+
+                    int propID = ReadInt("Property ID: ");
+                    int rounds = ReadInt("Rounds: ");
+
+                    RentInsuranceContract contract = new RentInsuranceContract(name, longParty, shortParty, propID, premium, insuredSum, rounds);
+                    RentInsuranceContracts.Add(contract);
                     Console.WriteLine("Contract {0} created", contract.ID);
                 }
             }

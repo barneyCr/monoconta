@@ -42,7 +42,7 @@ namespace monoconta
                     {
                         Debit(command);
                     }
-                    else if (command.ToLower() == "transfer")
+                    else if (command.ToLower() == "transfer" || command.ToLower() == "tr")
                     {
                         Transfer(command);
                     }
@@ -69,6 +69,7 @@ namespace monoconta
                     }
                     else if (command == "rate")
                     {
+                        Console.WriteLine("Current IRB = {0:F2}%", InterestRateBase);
                         InterestRateBase = ReadDouble("New rate: ");
                         foreach (var player in Players)
                         {
@@ -148,6 +149,7 @@ namespace monoconta
                     }
                     else if (command == "startbonus")
                     {
+                        Console.WriteLine("Current startbonus: {0:C}", startBonus);
                         startBonus = ReadDouble("Value: ");
                     }
                     else if (command == "deletedeposit")
@@ -182,7 +184,7 @@ namespace monoconta
                     {
                         ChangePeg();
                     }
-                   
+
                     else if (command == "changefee")
                     {
                         ChangeFee();
@@ -297,12 +299,20 @@ namespace monoconta
                         }
 
                         Console.WriteLine("Rent of {0:C} was paid to {1}.", rent, land.Owner.Name);
+
+                        foreach (var rentInsurance in RentInsuranceContracts.Where(rins => rins.InsuredShortParty == payer && rins.PropertyID == land.ID))
+                        {
+                            rentInsurance.PaidRentEvent();
+                        }
+
                         Transfer("transfer", land.Owner, payer, rent);
+
                         var rentContract = RentSwapContracts.FirstOrDefault(swp => swp.ShortParty == land.Owner && swp.PropertyID == land.ID);
                         if (rentContract != null)
                         {
                             rentContract.ReceivedRentEvent(rent);
                         }
+
                         land.RentFlowIn += rent;
                         // todo counter
                     }
@@ -336,9 +346,33 @@ namespace monoconta
                             }
                         }
                     }
+                    else if (command == "viewprops")
+                    {
+                        foreach (var propertyGroup in Properties.GroupBy(p => p.Neighbourhood))
+                        {
+                            Console.WriteLine("Neighbourhood {0}, NID {1}:", propertyGroup.Key.Name, propertyGroup.Key.NID);
+                            foreach (var prop in propertyGroup)
+                            {
+                                Console.Write("\t");
+                                if (prop.Owner == null)
+                                {
+                                    if (prop.OptionOwner != null)
+                                        Console.WriteLine("Property {0} [{1}], option owner {2}, valued at {3:C}", prop.Name, prop.ID, prop.OptionOwner.Name, prop.OptionValue);
+                                    else
+                                        Console.WriteLine("Property {0} [{1}], cost {2:C}", prop.Name, prop.ID, prop.BuyPrice);
+                                }
+                                else
+                                {
+                                    Console.WriteLine("Property {0} [{1}], owned by {2}, valued at {3:C}", prop.Name, prop.ID, prop.Owner.Name, prop.Value);
+                                }
+                            }
+                            Console.WriteLine();
+                        }
+                    }
                     else if (command == "setpropbuildings")
                     {
                         Property prop = ReadProperty();
+                        Console.WriteLine("{0} has {1} levels and {2} appartments", prop.Name, prop.CompleteLevels, prop.Appartments);
                         int levels = ReadInt("Levels: ");
                         int appartments = ReadInt("Appartments: ");
                         prop.SetBuildings(levels, appartments, 0);
@@ -374,12 +408,19 @@ namespace monoconta
                         }
                         Console.Write("Starting... ");
                         SGManager.set(
-                            Players.ToList(), Companies.ToList(),
-                            HedgeFunds.ToList(), Properties.ToList(),
+                            Players.ToList(), 
+                            Companies.ToList(),
+                            HedgeFunds.ToList(), 
+                            Properties.ToList(),
                             Neighbourhoods.ToList(),
                             RentSwapContracts.ToList(),
-                            InterestRateBase, admin, _m_,
-                            startBonus, depocounter, SSFR18);
+                            RentInsuranceContracts.ToList(),
+                            InterestRateBase, 
+                            admin, 
+                            _m_,
+                            startBonus, 
+                            depocounter, 
+                            SSFR18);
                         Console.Write("Change file? ");
                         if (Console.ReadLine() == "yes")
                         {
@@ -425,6 +466,10 @@ namespace monoconta
                     else if (command == "shareperf")
                     {
                         ShowSharePerformance();
+                    }
+                    else if (command == "permadiv")
+                    {
+                        RunPermaDivManager();
                     }
                 }
                 catch (Exception e)

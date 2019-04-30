@@ -2,7 +2,7 @@
 
 namespace monoconta.Contracts
 {
-    class InterestRateSwap : Contract, IDescribable
+    class InterestRateSwap : Contract, IDescribable, ITwoPartyContract
     {
         public InterestRateSwap(string name, Entity longP, Entity shortP, double fixObj, Func<double> varObj, Action<double, double> act, OuterAction<Contract> termination, ContractTerms terms)
             : base(name, longP, shortP, fixObj, varObj, act, termination, terms)

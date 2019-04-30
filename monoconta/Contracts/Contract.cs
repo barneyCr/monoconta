@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace monoconta
+namespace monoconta.Contracts
 {
     public delegate void OuterAction<T>(T obj);
 
@@ -62,7 +62,7 @@ namespace monoconta
 
     }
 
-    struct ContractTerms
+    internal struct ContractTerms
     {
         public double Sum;
         public int Rounds;
@@ -74,7 +74,7 @@ namespace monoconta
         }
     }
 
-    struct ContractRecord
+    internal struct ContractRecord
     {
         /// <summary>
         /// For example the money transferred as per the contract

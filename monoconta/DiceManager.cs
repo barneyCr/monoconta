@@ -17,7 +17,7 @@ namespace monoconta
 
         void Generate()
         {
-            Console.WriteLine("Generating set of random numbers...");
+            Console.WriteLine("Generating new set of random numbers...");
             this.randomizer.NextBytes(array);
         }
 
