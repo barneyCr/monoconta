@@ -535,6 +535,30 @@ namespace monoconta
             }
         }
 
+        private static void RepayOld(string command)
+        {
+            var repayer = ByID(ReadInt("Who is paying?"));
+            int destination = ReadInt("Whom?");
+            double amount = ReadDouble("Amount? ");
+            if (destination == 0) // bank 
+            {
+                repayer.LiabilityTowardsBank -= amount;
+                if (repayer == admin && char.IsUpper(command[0]))
+                    amount *= 0.85;
+                repayer.Money -= amount;
+            }
+            else
+            {
+                var userRepaid = ByID(destination);
+                repayer.Liabilities[userRepaid] -= amount;
+
+                userRepaid.Money += amount;
+                if (repayer == admin && char.IsUpper(command[0]))
+                    amount *= 0.85;
+                repayer.Money -= amount;
+            }
+        }
+
         private static void Refinance(string command)
         {
             var debtor = ByID(ReadInt("Who has the debt?"));
@@ -575,6 +599,19 @@ namespace monoconta
             {
                 removed.Entity.Deposits.Remove(removed.Deposit);
                 removed.Entity.Money += removed.Deposit.Principal;
+            }
+        }
+
+        private static void ViewDeposits()
+        {
+            var deposits = from ent in Entities
+                           from depo in ent.Deposits
+                           select new { Owner = ent, Deposit = depo };
+            foreach (var depositItem in deposits)
+            {
+                var deposit = depositItem.Deposit;
+                Console.WriteLine("\t{0} Principal: {1:C}, Interest: {2:C}, +{3:F2}%, owned by {4}, {5}/{6}", 
+                    ("["+deposit.DepositID+"]").PadRight(6), deposit.Principal.ToPaddedLeftCashString(24), deposit.TotalInterest.ToPaddedLeftCashString(24), (deposit.CurrentCapitalBase/deposit.Principal-1)*100, depositItem.Owner.Name.PadLeft(25), deposit.RoundsPassed, deposit.TotalRounds);
             }
         }
 

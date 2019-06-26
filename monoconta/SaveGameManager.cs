@@ -293,6 +293,26 @@ namespace monoconta
                 xml.WriteEndElement();
             }
             xml.WriteEndElement(); // liabilities
+
+            /*
+            xml.WriteStartElement("loanscontracted");
+            xml.WriteElementString("bankdebt", entity.LiabilityTowardsBank.ToF3Double());
+            foreach (KeyValuePair<Entity, List<DebtStructure>> liab in entity.LoansContracted)
+            {
+                xml.WriteStartElement("relationship");
+                xml.WriteAttributeString("with", liab.Key.ID.ToString());
+                xml.WriteAttributeString("fullname", liab.Key.Name);
+                foreach (var debt in liab.Value)
+                {
+                    xml.WriteStartElement("debt");
+                    xml.WriteElementString("rate", debt.InterestRate.ToF3Double());
+                    xml.WriteElementString("value", debt.Sum.ToF3Double());
+                    xml.WriteEndElement();
+                }
+                    xml.WriteEndElement();
+            }
+            xml.WriteEndElement(); // loanscontracted
+            */           
         }
 
         private void WriteContracts(XmlWriter xml)

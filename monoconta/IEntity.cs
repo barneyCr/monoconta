@@ -42,6 +42,8 @@ namespace monoconta
 		public Dictionary<Entity, double> Liabilities { get; set; }
         public List<Deposit> Deposits { get; set; }
 
+        public Dictionary<Entity, List<DebtStructure>> LoansContracted { get; set; }
+
 
         /// <summary>
         /// Includes loans made, deposits, shares in other companies and all real estate assets. Excludes cash.

@@ -35,6 +35,8 @@ namespace monoconta
         internal HedgeFund() : base()
         {
             this.Manager = null;
+            this.LastShareSplitRatio = 1; // super important
+            this.ManagerVoteMultiplier = 5; // default
             this.PreviousShareValues = new Dictionary<int, double>(100);// { { 0, 10 } };
             this.PreviousDividendValues = new Dictionary<int, double>(100);
         }

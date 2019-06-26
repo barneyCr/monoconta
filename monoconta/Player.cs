@@ -14,6 +14,7 @@ namespace monoconta
             this.Name = name;
             this.ID = id;
             Liabilities = new Dictionary<Entity, double>();
+            this.LoansContracted = new Dictionary<Entity, List<DebtStructure>>();
             Deposits = new List<Deposit>();
 			this.PeggedCompanies = new List<Company>();
          }

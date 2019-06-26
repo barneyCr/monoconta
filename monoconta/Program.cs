@@ -53,6 +53,9 @@ namespace monoconta
         static Random rand = new Random();
         public static bool financedeficit = true;
 
+        public static double InterplayerBaseRate { get => InterestRateBase / 3; }
+        public static double BankBaseRate { get => InterestRateBase / 2; }
+
         public static void Main(string[] args)
         {
             LoadGame(args);

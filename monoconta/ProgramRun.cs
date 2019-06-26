@@ -81,6 +81,8 @@ namespace monoconta
                     }
                     else if (command.ToLower() == "rateinfo")
                     {
+                        Console.WriteLine("{0:F3}% - IPOR(0)", CalculateIPOR(0));
+                        Console.WriteLine("{0:F3}% - IPOR(15)", CalculateIPOR(15));
                         Console.WriteLine("{0:F3}% - interest rate for interplayer loans", InterestRateBase / 3);
                         Console.WriteLine("{0:F3}% - interest rate for bank loans", InterestRateBase / 2);
                         Console.WriteLine("{0:F3}% - interest rate for short selling", InterestRateBase * MainClass.SSFR18 / 324 * 151 / 117);
@@ -94,26 +96,7 @@ namespace monoconta
                     }
                     else if (command.ToLower() == "repay")
                     {
-                        var repayer = ByID(ReadInt("Who is paying?"));
-                        int destination = ReadInt("Whom?");
-                        double amount = ReadDouble("Amount? ");
-                        if (destination == 0) // bank 
-                        {
-                            repayer.LiabilityTowardsBank -= amount;
-                            if (repayer == admin && char.IsUpper(command[0]))
-                                amount *= 0.85;
-                            repayer.Money -= amount;
-                        }
-                        else
-                        {
-                            var userRepaid = ByID(destination);
-                            repayer.Liabilities[userRepaid] -= amount;
-
-                            userRepaid.Money += amount;
-                            if (repayer == admin && char.IsUpper(command[0]))
-                                amount *= 0.85;
-                            repayer.Money -= amount;
-                        }
+                        RepayOld(command);
                     }
                     else if (command.ToLower() == "refinance")
                     {
@@ -122,6 +105,10 @@ namespace monoconta
                     else if (command == "deposit")
                     {
                         CreateDeposit();
+                    }
+                    else if (command == "deposits")
+                    {
+                        ViewDeposits();
                     }
                     else if (command == "bet")
                     {
@@ -478,6 +465,7 @@ namespace monoconta
                 }
             }
         }
+
 
     }
 }

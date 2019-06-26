@@ -17,10 +17,11 @@ namespace monoconta
         bool verboseDebug;
         public ReadGameManager(string path, bool verbose)
         {
-            _path = path; 
+            _path = path;
             verboseDebug = verbose;
 
             this.UnresolvedLiabilityHoldingDictionary = new Dictionary<Entity, Dictionary<int, double>>();
+            this.UnresolvedNewLiabilityHoldingDictionary = new Dictionary<Entity, Dictionary<int, List<Tuple<double, double>>>>();
             this.UnresolvedShareholdingDictionary = new Dictionary<Company, Dictionary<int, int>>();
             this.UnresolvedShortSellingDictionary = new Dictionary<Company, Dictionary<KeyValuePair<int, int>, int>>();
             this.UnresolvedFundManagersDictionary = new Dictionary<HedgeFund, int>();
@@ -72,15 +73,17 @@ namespace monoconta
             {
                 Company.ID_COUNTER_BASE = GetAllEntities().Max(e => e.ID);
             }
-            catch (Exception) {
- throw new Exception("No entities...");
+            catch (Exception)
+            {
+                throw new Exception("No entities...");
             }
         }
 
         private int ___adminID;
         private readonly Dictionary<Entity, Dictionary<int, double>> UnresolvedLiabilityHoldingDictionary;
+        private readonly Dictionary<Entity, Dictionary<int, List<Tuple<double,double>>>> UnresolvedNewLiabilityHoldingDictionary;
         private readonly Dictionary<Company, Dictionary<int, int>> UnresolvedShareholdingDictionary;
-        private readonly Dictionary<Company, Dictionary<KeyValuePair<int,int>, int>> UnresolvedShortSellingDictionary;
+        private readonly Dictionary<Company, Dictionary<KeyValuePair<int, int>, int>> UnresolvedShortSellingDictionary;
         private readonly Dictionary<HedgeFund, int> UnresolvedFundManagersDictionary;
         private readonly Dictionary<HedgeFund, Dictionary<int, int>> UnresolvedNewMoneyInFundDictionary;
         private Dictionary<HedgeFund, Dictionary<int, HedgeFund.CompStructure>> UnresolvedFundCompStructuresDictionary;
@@ -318,32 +321,57 @@ namespace monoconta
                 debitor.Liabilities = debt.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value);
                 missingLinkCounter++;
             }
+            foreach (KeyValuePair<Entity, Dictionary<int, List<Tuple<double, double>>>> debt in this.UnresolvedNewLiabilityHoldingDictionary)
+            {
+                Entity debitor = debt.Key;
+                debitor.LoansContracted = debt.Value.ToDictionary(
+                    pair => GetAllEntities().First(entity => entity.ID == pair.Key),
+                    pair =>
+                    {
+                        List<DebtStructure> list = new List<DebtStructure>();
+                        foreach (var relationship in pair.Value)
+                        {
+                            list.Add(new DebtStructure(
+                                        GetAllEntities().First(entity => entity.ID == pair.Key),
+                                        debitor,
+                                        relationship.Item1,
+                                        relationship.Item2)
+                                    );
+                        }
+                        return list;
+                    }
+                );
+                missingLinkCounter++;
+            }
             foreach (KeyValuePair<Company, Dictionary<int, int>> shareholding in this.UnresolvedShareholdingDictionary)
             {
                 Company company = shareholding.Key;
-                company.ShareholderStructure = shareholding.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value); 
+                company.ShareholderStructure = shareholding.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value);
                 missingLinkCounter++;
             }
             foreach (KeyValuePair<Company, Dictionary<KeyValuePair<int, int>, int>> shortSale in this.UnresolvedShortSellingDictionary)
             {
                 Company company = shortSale.Key;
                 company.ShortSellingActivity = shortSale.Value.ToDictionary(
-                    pair=> { IEnumerable<Entity> entities = GetAllEntities();
-                        return new KeyValuePair<Entity, Entity>(entities.First(e => e.ID == pair.Key.Key), entities.First(e => e.ID == pair.Key.Value)); },
-                    pair=>(double)pair.Value
+                    pair =>
+                    {
+                        IEnumerable<Entity> entities = GetAllEntities();
+                        return new KeyValuePair<Entity, Entity>(entities.First(e => e.ID == pair.Key.Key), entities.First(e => e.ID == pair.Key.Value));
+                    },
+                    pair => (double)pair.Value
                 );
                 missingLinkCounter++;
             }
             foreach (KeyValuePair<HedgeFund, int> management in this.UnresolvedFundManagersDictionary)
             {
                 HedgeFund fund = management.Key;
-                fund.Manager = GetAllEntities().First(entity => entity.ID == management.Value); 
+                fund.Manager = GetAllEntities().First(entity => entity.ID == management.Value);
                 missingLinkCounter++;
             }
             foreach (KeyValuePair<HedgeFund, Dictionary<int, int>> newMoneySituation in this.UnresolvedNewMoneyInFundDictionary)
             {
                 HedgeFund fund = newMoneySituation.Key;
-                fund.NewlySubscribedFunds = newMoneySituation.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value); 
+                fund.NewlySubscribedFunds = newMoneySituation.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value);
                 missingLinkCounter++;
             }
             foreach (KeyValuePair<HedgeFund, Dictionary<int, HedgeFund.CompStructure>> compStructure in this.UnresolvedFundCompStructuresDictionary)
@@ -352,7 +380,7 @@ namespace monoconta
                 fund.CompensationRules = compStructure.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value);
                 missingLinkCounter++;
             }
-            Console.WriteLine("\tResolved{0} missing entity links", verboseDebug ? " " + missingLinkCounter.ToString(): "");
+            Console.WriteLine("\tResolved{0} missing entity links", verboseDebug ? " " + missingLinkCounter.ToString() : "");
         }
 
         private void ReadPlayers(XElement xPlayersElement)
@@ -511,6 +539,26 @@ namespace monoconta
                 liabilities.Add(creditorID, value);
             }
             this.UnresolvedLiabilityHoldingDictionary.Add(entity, liabilities);
+
+
+            /*
+            entity.LoansContracted = new Dictionary<Entity, List<DebtStructure>>(10);
+            Dictionary<int, List<Tuple<double, double>>> pairs = new Dictionary<int, List<Tuple<double, double>>>(10);
+            foreach (var relationshipElem in element.Element("liabilities").Elements("relationship"))
+            {
+                List<Tuple<double, double>> debtsToThisCreditorList = new List<Tuple<double, double>>();
+                int creditorID = relationshipElem.Attribute("with").Value.ToInt();
+                foreach (var debtElement in relationshipElem.Elements("debt"))
+                {
+                    read = str => readerFunc(debtElement, str);
+                    double rate = read("rate").ToDouble();
+                    double sum = read("value").ToDouble();
+                    debtsToThisCreditorList.Add(Tuple.Create(rate, sum));
+                }
+                pairs.Add(creditorID, debtsToThisCreditorList);
+            }
+            this.UnresolvedNewLiabilityHoldingDictionary.Add(entity, pairs);
+            */
         }
     }
 }
