@@ -197,7 +197,7 @@ namespace monoconta
 
             double sharesBorrowedValue = entity.ShortedSharesValue;
             double bankDebt = entity.LiabilityTowardsBank;
-            double cashMoneyDebt = entity.Liabilities.Sum(pair => pair.Value);
+            double cashMoneyDebt = entity.TotalCashLoansContractedValue;
 
             double goldValue = GoldManager.GetGoldBarsValue(entity);
 
@@ -366,7 +366,7 @@ namespace monoconta
                 if (variant == "loan")
                 {
                     int from = ReadInt("Creditor ID: ");
-                    Loan("loan", entity, from, -entity.Money);
+                    LoanNew(entity, from, -entity.Money);
                 }
                 else if (variant == "sellshares" || variant == "shares" || variant == "sell" || variant == "sh")
                 {
@@ -397,7 +397,7 @@ namespace monoconta
                 if (variant == "loan")
                 {
                     int from = ReadInt("Creditor ID: ");
-                    Loan("loan", payer, from, -payer.Money);
+                    LoanNew(payer, from, -payer.Money);
                 }
                 else if (variant == "sellshares" || variant == "shares" || variant == "sell" || variant == "sh")
                 {
@@ -422,7 +422,7 @@ namespace monoconta
                 player.OnPassedStart();
                 player.Money += startBonus;
 
-                player.DoLiabilitiesOnPass(command);
+                player.DoLiabilitiesOnPassNEWNEWNEW(command);
                 Console.WriteLine("{0} received {1:C} as interest on gold", player.Name, player.ReceiveInterestOnGold());
 
 
@@ -444,7 +444,7 @@ namespace monoconta
                     foreach (var company in player.PeggedCompanies)
                     {
                         company.RegisterBook();
-                        company.DoLiabilitiesOnPass(command);
+                        company.DoLiabilitiesOnPassNEWNEWNEW(command);
 
                         Console.WriteLine("{0} received {1:C} as interest on gold", company.Name, company.ReceiveInterestOnGold());
 
@@ -463,12 +463,8 @@ namespace monoconta
                                 lender.Money += paid;
                                 shortSeller.Money = 0;
                                 double differencePlusInterplayerInterest = (interestPayment - paid) * (InterestRateBase / 300 + 1);
-                                if (shortSeller.Liabilities.ContainsKey(lender))
-                                {
-                                    shortSeller.Liabilities[lender] += differencePlusInterplayerInterest;
-                                }
-                                else
-                                    shortSeller.Liabilities.Add(lender, differencePlusInterplayerInterest);
+
+                                LoanNew(shortSeller, lender.ID, differencePlusInterplayerInterest, MainClass.BankBaseRate);
                             }
                             else
                             {
@@ -506,6 +502,7 @@ namespace monoconta
             }
         }
 
+        [Obsolete("Old Liabilities")]
         private static void Loan(string command, Entity debitor = null, int? source = null, double? sum = null)
         {
             var player = debitor ?? ByID(ReadInt("Who is getting the loan? "));
@@ -535,6 +532,7 @@ namespace monoconta
             }
         }
 
+        [Obsolete("Old Liabilities")]
         private static void RepayOld(string command)
         {
             var repayer = ByID(ReadInt("Who is paying?"));
@@ -559,6 +557,7 @@ namespace monoconta
             }
         }
 
+        [Obsolete("Old Liabilities")]
         private static void Refinance(string command)
         {
             var debtor = ByID(ReadInt("Who has the debt?"));
@@ -585,7 +584,7 @@ namespace monoconta
                 debtor.Liabilities.Add(financier, amount * (1 + commission));
             financier.Money -= amount * (financier == admin && char.IsUpper(command[0]) ? .945 : 1);
         }
-
+        
         private static void DeleteDeposit()
         {
             int id = ReadInt("ID: ");
@@ -807,9 +806,9 @@ namespace monoconta
                     player.PeggedCompanies.Remove(entity as Company);
                     Console.WriteLine("Removed pegging");
                 }
-                if (player.Liabilities.ContainsKey(entity))
+                if (player.LoansContracted.ContainsKey(entity))
                 {
-                    player.Liabilities.Remove(entity);
+                    player.LoansContracted.Remove(entity);
                     Console.WriteLine("Removed liabilities' book");
                 }
             }

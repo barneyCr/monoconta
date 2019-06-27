@@ -315,12 +315,12 @@ namespace monoconta
         private void ResolveMissingLinks()
         {
             int missingLinkCounter = 0;
-            foreach (KeyValuePair<Entity, Dictionary<int, double>> debt in this.UnresolvedLiabilityHoldingDictionary)
+            /*foreach (KeyValuePair<Entity, Dictionary<int, double>> debt in this.UnresolvedLiabilityHoldingDictionary)
             {
                 Entity debitor = debt.Key;
                 debitor.Liabilities = debt.Value.ToDictionary(pair => GetAllEntities().First(entity => entity.ID == pair.Key), pair => pair.Value);
                 missingLinkCounter++;
-            }
+            }*/
             foreach (KeyValuePair<Entity, Dictionary<int, List<Tuple<double, double>>>> debt in this.UnresolvedNewLiabilityHoldingDictionary)
             {
                 Entity debitor = debt.Key;
@@ -514,7 +514,7 @@ namespace monoconta
             entity.MoneyIn = read("cashin").ToDouble();
             entity.MoneyOut = read("cashout").ToDouble();
             entity.PassedStartCounter = read("passcounter").ToInt();
-            entity.LiabilityTowardsBank = element.Element("liabilities").Element("bankdebt").Value.ToDouble();
+            entity.LiabilityTowardsBank = element.Element("loanscontracted").Element("bankdebt").Value.ToDouble();
             List<Deposit> deposits = new List<Deposit>();
             foreach (var depositElement in element.Element("deposits").Elements("deposit"))
             {
@@ -529,6 +529,8 @@ namespace monoconta
                 deposits.Add(deposit);
             }
             entity.Deposits = deposits;
+
+            /*
             entity.Liabilities = new Dictionary<Entity, double>(10);
             Dictionary<int, double> liabilities = new Dictionary<int, double>();
             foreach (var debtElement in element.Element("liabilities").Elements("debt"))
@@ -541,10 +543,10 @@ namespace monoconta
             this.UnresolvedLiabilityHoldingDictionary.Add(entity, liabilities);
 
 
-            /*
+            */
             entity.LoansContracted = new Dictionary<Entity, List<DebtStructure>>(10);
             Dictionary<int, List<Tuple<double, double>>> pairs = new Dictionary<int, List<Tuple<double, double>>>(10);
-            foreach (var relationshipElem in element.Element("liabilities").Elements("relationship"))
+            foreach (var relationshipElem in element.Element("loanscontracted").Elements("relationship"))
             {
                 List<Tuple<double, double>> debtsToThisCreditorList = new List<Tuple<double, double>>();
                 int creditorID = relationshipElem.Attribute("with").Value.ToInt();
@@ -558,7 +560,7 @@ namespace monoconta
                 pairs.Add(creditorID, debtsToThisCreditorList);
             }
             this.UnresolvedNewLiabilityHoldingDictionary.Add(entity, pairs);
-            */
+            // */
         }
     }
 }

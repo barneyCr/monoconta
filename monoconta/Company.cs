@@ -37,7 +37,7 @@ namespace monoconta
             SubscribeNewShareholder(shareholder, capital, 0);
 
             this.Deposits = new List<Deposit>();
-            this.Liabilities = new Dictionary<Entity, double>();
+            //this.Liabilities = new Dictionary<Entity, double>();
             this.LoansContracted = new Dictionary<Entity, List<DebtStructure>>();
             this.ShortSellingActivity = new Dictionary<KeyValuePair<Entity, Entity>, double>();
         }
@@ -46,7 +46,7 @@ namespace monoconta
         {
             this.ShareholderStructure = new Dictionary<Entity, int>();
             this.Deposits = new List<Deposit>();
-            this.Liabilities = new Dictionary<Entity, double>();
+            //this.Liabilities = new Dictionary<Entity, double>();
             this.LoansContracted = new Dictionary<Entity, List<DebtStructure>>();
             this.ShortSellingActivity = new Dictionary<KeyValuePair<Entity, Entity>, double>();
             SetInitialShareValue(1);

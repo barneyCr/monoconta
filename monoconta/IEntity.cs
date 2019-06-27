@@ -39,10 +39,13 @@ namespace monoconta
 		}
 
 		public double LiabilityTowardsBank { get; set; }
+        [Obsolete("OLD LIABILITIES", true)]
 		public Dictionary<Entity, double> Liabilities { get; set; }
         public List<Deposit> Deposits { get; set; }
 
         public Dictionary<Entity, List<DebtStructure>> LoansContracted { get; set; }
+
+        public double TotalCashLoansContractedValue { get { return LoansContracted.Values.Sum(debtList => debtList.Sum(debt => debt.Sum)); } }
 
 
         /// <summary>
@@ -74,9 +77,10 @@ namespace monoconta
             get
             {
                 double goldValue = GoldManager.GetGoldBarsValue(this);
-                return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value) + ShortedSharesValue + (goldValue < 0 ? -goldValue : 0);
+                //return LiabilityTowardsBank + Liabilities.Sum(pair => pair.Value) + ShortedSharesValue + (goldValue < 0 ? -goldValue : 0);
+                return LiabilityTowardsBank + TotalCashLoansContractedValue + ShortedSharesValue + (goldValue < 0 ? -goldValue : 0);
             }
-		}
+        }
          /// <summary>
          /// Does not include shares lent to others.
          /// </summary>
@@ -101,7 +105,8 @@ namespace monoconta
         {
             get
             {
-                return MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
+                //return MainClass.Entities.SelectMany(entity => entity.Liabilities).Where(debt => debt.Key == this).Sum(debt => debt.Value);
+                return MainClass.Entities.SelectMany(entity => entity.LoansContracted).Where(debt => debt.Key == this).Sum(debts => debts.Value.Sum(d => d.Sum));
             }
         }
 
@@ -236,7 +241,8 @@ namespace monoconta
 			
 		}
 
-        public void DoLiabilitiesOnPass(string command)
+        [Obsolete("Old Liabilities")]
+        public void DoLiabilitiesOnPassOld(string command)
         {
             double bankRate = MainClass.InterestRateBase / (this == MainClass.admin && command.ToLower() == "passs" ? 2.25 : 2);
 
@@ -252,6 +258,27 @@ namespace monoconta
                 this.Liabilities[creditor] *= ((MainClass.InterestRateBase / 3) / 100 + 1);
             }
         }
+        public void DoLiabilitiesOnPassNEWNEWNEW(string command)
+        {
+            double bankRate = MainClass.InterestRateBase / (this == MainClass.admin && command.ToLower() == "passs" ? 2.25 : 2);
+
+            double bankInterest = this.LiabilityTowardsBank * (bankRate / 100);
+            double goldBankInterestCredit = GoldManager.CalculateBankInterestReduction(this);
+
+            double modifiedBankInterest = bankInterest - goldBankInterestCredit;
+            if (modifiedBankInterest > 0)
+                this.LiabilityTowardsBank += modifiedBankInterest;
+
+            foreach (var creditor in this.LoansContracted.Keys.ToList())
+            {
+                var loanBook = this.LoansContracted[creditor];
+
+                foreach (var loan in loanBook)
+                {
+                    loan.Sum *= (loan.InterestRate / 100) + 1;
+                }
+            }
+        }
 
         public double ReceiveInterestOnGold()
         {
@@ -260,6 +287,7 @@ namespace monoconta
             return goldInterestReceived;
         }
 
+        [Obsolete("Old Liabilities")]
         public double GetDirectLiabilitiesInterest()
         {
             double totalLiab = TotalLiabilitiesValue;
@@ -267,7 +295,74 @@ namespace monoconta
             double cost = LiabilityTowardsBank * mainRate / 200 + Liabilities.Sum(p => p.Value) * mainRate / 300 + ShortedSharesValue * MainClass.SSFR18 / 324 * 151 / 117 * mainRate / 100;
             return cost / totalLiab * 100;
          }
-         
+
+
+        private void PrintLiabilities (ref double costOfCapital, ref double financialLiabilities)
+        {
+            Console.WriteLine("Liabilities: ");
+            Console.WriteLine("\t{0:C} towards bank", LiabilityTowardsBank);
+            costOfCapital += LiabilityTowardsBank * MainClass.BankBaseRate;
+            financialLiabilities += LiabilityTowardsBank;
+            foreach (var loanBook in LoansContracted)
+            {
+                Console.WriteLine("\t{0:C} towards {1}:", loanBook.Value.Sum(loan=>loan.Sum), loanBook.Key.Name);
+                foreach (var loan in loanBook.Value)
+                {
+                    Console.WriteLine("\t\t{0:C} @ {1:P3}", loan.Sum, loan.InterestRate/100);
+                    costOfCapital += loan.Sum * loan.InterestRate/100;
+                    financialLiabilities += loan.Sum;
+                }
+            }
+            var particularSharesOwed = from comp in MainClass.Entities.OfType<Company>()
+                                       from shortDict in comp.ShortSellingActivity
+                                       where shortDict.Key.Value == this
+                                       select new { Company = comp, Information = shortDict };
+            foreach (var item in particularSharesOwed)
+            {
+                Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Key.Name, item.Information.Value * item.Company.ShareValue);
+            }
+
+        }
+
+        private void PrintLoansMade (ref double chargeOnCapital, ref double financialAssets)
+        {
+            Console.WriteLine("Loans made: ");
+            
+            // There is a big book (loansGBD) containing all loans made
+            // On each PAGE, there are the loans made to a certain debtor
+            // By enumerating all elements on that page we have access to individual loans
+            // The title is the debtor
+            // The rows (Contents) are the credits
+
+            var loansGroupedByDebtor = from debtor in MainClass.Entities
+                                from debtsOfDebtor in debtor.LoansContracted // list of all creditors and corresponding loans
+                                where debtsOfDebtor.Key == this // loans where creditor is me
+                                let creditsIHaveGiven = debtsOfDebtor.Value
+                                select new { Debtor = debtor, ListOfLoans = creditsIHaveGiven };
+
+            foreach (var pageOfCredits in loansGroupedByDebtor)
+            {
+                Console.WriteLine("\t{0:C} to be received from {1}", pageOfCredits.ListOfLoans.Sum(l=>l.Sum), pageOfCredits.Debtor.Name);
+                foreach (DebtStructure individualLoan in pageOfCredits.ListOfLoans)
+                {
+                    Console.WriteLine("\t\t{0:C} @ {1:P3}", individualLoan.Sum, individualLoan.InterestRate/100);
+                    chargeOnCapital += individualLoan.Sum * individualLoan.InterestRate / 100;
+                    financialAssets += individualLoan.Sum;
+                }
+            }
+
+            var particularSharesLent = from comp in MainClass.Entities.OfType<Company>()
+                                       from shortDict in comp.ShortSellingActivity
+                                       where shortDict.Key.Key == this
+                                       select new { Company = comp, Information = shortDict };
+            foreach (var item in particularSharesLent)
+            {
+                Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Value.Name, item.Information.Value * item.Company.ShareValue);
+                // shares lent value added below, in shares in companies
+            }
+
+        }
+
         public void PrintCash()
         {
             Console.WriteLine("\n-------\n[({0}) {1}] Cash: {2:C}", ID, Name, Money);
@@ -279,7 +374,25 @@ namespace monoconta
             double financialAssets = 0, financialLiabilities = 0;
             Console.WriteLine("IN: {0:C}, OUT: {1:C}", MoneyIn, MoneyOut);
             Console.WriteLine("Passed start {0} times", PassedStartCounter);
-            Console.WriteLine("Liabilities: ");
+
+            PrintLiabilities(ref costOfCapital, ref financialLiabilities);
+
+            Console.WriteLine("GOLD bars owned: {0:F2} kg x {1:C} = {2:C}",
+                GoldManager.GetGoldBarsNumberOwned(this),
+                GoldManager.CurrentGoldPrice,
+                GoldManager.GetGoldBarsValue(this));
+            Console.WriteLine("\tbank interest reduction: {0:C}", GoldManager.CalculateBankInterestReduction(this));
+            Console.WriteLine("\tinterest on bars: {0:C}", GoldManager.CalculateGoldInterestReceive(this));
+            if (GoldManager.GetGoldBarsNumberOwned(this) > 0)
+                financialAssets += GoldManager.GetGoldBarsValue(this);
+            else financialLiabilities += -GoldManager.GetGoldBarsValue(this);
+
+
+            PrintLoansMade(ref chargeOnCapital, ref financialAssets);
+
+            #region old
+
+            /*Console.WriteLine("Liabilities: ");
             Console.WriteLine("\t{0:C} towards bank", LiabilityTowardsBank);
             costOfCapital += LiabilityTowardsBank * MainClass.InterestRateBase / 100 / 2;
             financialLiabilities += LiabilityTowardsBank;
@@ -329,6 +442,8 @@ namespace monoconta
                 Console.WriteLine("\t{0} shares of {1} towards {2} [{3:C}]", item.Information.Value, item.Company.Name, item.Information.Key.Value.Name, item.Information.Value * item.Company.ShareValue);
                 // shares lent value added below, in shares in companies
             }
+*/
+            #endregion
 
             Console.WriteLine("Deposits:\t\t[{0:C}]", this.Deposits.Sum(dep=>dep.CurrentCapitalBase));
             foreach (var deposit in this.Deposits)
@@ -474,20 +589,21 @@ namespace monoconta
                     }
                     depCharge *= pctg;
                     var book = from e in MainClass.Entities
-                               from debt in e.Liabilities
+                               from debt in e.LoansContracted
+                               let debts = e.LoansContracted.Values
                                where debt.Key == this
                                select new { Debtor = entity, Debt = debt.Value };
                     foreach (var credit in book)
                     {
                         //Console.WriteLine("\t{0:C} to be received from {1}", credit.Debt, credit.Debtor.Name);
-                        creditCharge += credit.Debt * MainClass.InterestRateBase / 300;
+                        creditCharge += credit.Debt.Sum(d => d.Sum) * MainClass.InterplayerBaseRate/100;
                     }
                     creditCharge *= pctg;
-                    foreach (var debts in entity.Liabilities)
+                    foreach (var debts in entity.LoansContracted.Values)
                     {
-                        costCharge += debts.Value * MainClass.InterestRateBase / 300;
+                        costCharge += debts.Sum(d=>d.Sum) * MainClass.InterplayerBaseRate/100;
                     }
-                    costCharge += entity.LiabilityTowardsBank * MainClass.InterestRateBase / 200;
+                    costCharge += entity.LiabilityTowardsBank * MainClass.BankBaseRate / 100;
 
                     costCharge *= pctg;
                     chg += depCharge;

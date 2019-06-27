@@ -282,6 +282,7 @@ namespace monoconta
             }
             xml.WriteEndElement(); // deposits
 
+            /*
             xml.WriteStartElement("liabilities");
             xml.WriteElementString("bankdebt", entity.LiabilityTowardsBank.ToF3Double());
             foreach (var liab in entity.Liabilities)
@@ -294,7 +295,7 @@ namespace monoconta
             }
             xml.WriteEndElement(); // liabilities
 
-            /*
+            */
             xml.WriteStartElement("loanscontracted");
             xml.WriteElementString("bankdebt", entity.LiabilityTowardsBank.ToF3Double());
             foreach (KeyValuePair<Entity, List<DebtStructure>> liab in entity.LoansContracted)
@@ -307,12 +308,12 @@ namespace monoconta
                     xml.WriteStartElement("debt");
                     xml.WriteElementString("rate", debt.InterestRate.ToF3Double());
                     xml.WriteElementString("value", debt.Sum.ToF3Double());
-                    xml.WriteEndElement();
+                    xml.WriteEndElement(); // debt
                 }
-                    xml.WriteEndElement();
+                    xml.WriteEndElement(); // relationship
             }
             xml.WriteEndElement(); // loanscontracted
-            */           
+            // */           
         }
 
         private void WriteContracts(XmlWriter xml)

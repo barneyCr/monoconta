@@ -8,7 +8,7 @@ namespace monoconta
 
         private static void Run()
         {
-            while (true)
+            startLabel:  while (true)
             {
                 Console.WriteLine("\n\n");
                 foreach (var player in Players)
@@ -57,7 +57,7 @@ namespace monoconta
                     }
                     else if (command.ToLower() == "loan")
                     {
-                        Loan(command);
+                        LoanNew();
                     }
                     else if (command.StartsWith("print"))
                     {
@@ -69,7 +69,14 @@ namespace monoconta
                     }
                     else if (command == "rate")
                     {
-                        Console.WriteLine("Current IRB = {0:F2}%", InterestRateBase);
+                        double oldBaseRate=InterestRateBase;
+                        Console.WriteLine("Current Base = {0:F3}%", InterestRateBase);
+                        Console.WriteLine("Bank Rate = {0:F3}%", BankBaseRate);
+                        Console.WriteLine("Interplayer Base Rate = {0:F3}%", InterplayerBaseRate);
+
+                        Console.WriteLine("\t{0:F3}% - IPOR(0)", CalculateIPOR(0));
+                        Console.WriteLine("\t{0:F3}% - IPOR(15)", CalculateIPOR(15));
+
                         InterestRateBase = ReadDouble("New rate: ");
                         foreach (var player in Players)
                         {
@@ -77,7 +84,16 @@ namespace monoconta
                             {
                                 deposit.RecalculateInterestRate();
                             }
+                            foreach (var creditorBook in player.LoansContracted)
+                            {
+                                foreach (var credit in creditorBook.Value)
+                                {
+                                    credit.InterestRate *= (InterestRateBase / oldBaseRate);
+                                }
+                            }
                         }
+                        command = "rateinfo";
+                        goto startLabel;
                     }
                     else if (command.ToLower() == "rateinfo")
                     {
@@ -96,11 +112,11 @@ namespace monoconta
                     }
                     else if (command.ToLower() == "repay")
                     {
-                        RepayOld(command);
+                        RepayNew(command);
                     }
                     else if (command.ToLower() == "refinance")
                     {
-                        Refinance(command);
+                        RefinanceNew(command);
                     }
                     else if (command == "deposit")
                     {
@@ -193,7 +209,7 @@ namespace monoconta
                         SellShares();
                     }
 
-                    else if (command == "viewvotepower")
+                    else if (command == "votes" || command == "viewvotepower")
                     {
                         ViewVotePower();
                     }
